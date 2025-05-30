@@ -8,29 +8,22 @@ import complaintRoutes from './complaints.js';
 import foodrequestRoutes from './foodrequest.js';
 import verifyToken from './middleware/verifyToken.js';
 import dotenv from 'dotenv';
-
+import lostFoundRoutes from './lostNfound.js';
+import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Load environment variables
-dotenv.config({ path: join(__dirname, '..', '.env') });
-
-
 const app = express();
 const jwtSecret = "zxcvasdfgtrewqyhbvcxzfdsahfs";
+
+const __filename = fileURLToPath(import.meta.url);       
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: join(__dirname, '..', '.env') });
 
 app.use(cors());
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/test', (req, res) => {
-    res.json({ message: 'Server is working' });
-});
-
-// Add after express initialization
 app.use((req, res, next) => {
     console.log('Incoming request:', {
         method: req.method,
@@ -42,7 +35,11 @@ app.use((req, res, next) => {
 
 app.use('/api',foodrequestRoutes);
 app.use('/', complaintRoutes);
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api', lostFoundRoutes);
+app.get('/test', (req, res) => {
+    res.json({ message: 'Server is working' });
+});
 
 await db.execute(`CREATE TABLE IF NOT EXISTS WARDEN (
     Warden_id VARCHAR(10) PRIMARY KEY,
@@ -102,7 +99,9 @@ await db.execute(`CREATE TABLE IF NOT EXISTS LostAndFound(
     item_name VARCHAR(255) NOT NULL,
     found_location VARCHAR(255) NOT NULL,
     report_date DATE NOT NULL,
-    status VARCHAR(10) NOT NULL
+    status VARCHAR(10) NOT NULL,
+    phone_number VARCHAR(11) NOT NULL,
+    image_path VARCHAR(255)
 )`);
 
 await db.execute(`CREATE TABLE IF NOT EXISTS food_request (
@@ -117,7 +116,16 @@ await db.execute(`CREATE TABLE IF NOT EXISTS food_request (
     FOREIGN KEY (hostel_id) REFERENCES HOSTEL(hostel_id) ON DELETE SET NULL
 )`);
 
-// API Route to Create Warden
+const uploadsDir = join(__dirname, 'uploads', 'lostfound');
+try {
+    mkdirSync(uploadsDir, { recursive: true });
+    console.log('Uploads directory created successfully');
+} catch (err) {
+    if (err.code !== 'EEXIST') {
+        console.error('Error creating uploads directory:', err);
+    }
+}
+
 app.post('/createWarden', [
     body('warden_id').notEmpty().withMessage('ID is required'),
     body('w_name').notEmpty().withMessage('Name is required'),
@@ -146,7 +154,6 @@ app.post('/createWarden', [
     }
 });
 
-// API Route to Create Student
 app.post('/createStudent', [
     body('roll_no').notEmpty().withMessage('Roll number is required'),
     body('s_name').notEmpty().withMessage('Name is required'),
@@ -169,7 +176,6 @@ try {
         const { roll_no, s_name, dept, batch, contact_no, snu_email_id, password, room_no, hostel_id, parent_contact } = req.body;
 
 
-//here I am checking if hostel already exists and if it has capacity
 const [hostel]=await db.execute(
             `select h.*, (select count(*) from student where hostel_id=?) as current_occupancy from hostel h where h.hostel_id=?`,
             [hostel_id,hostel_id]
@@ -206,8 +212,6 @@ if(existingEmail.length>0){
 });
 
 
-
-//api route to create hostel
 app.post('/createHostel',[
     body('hostel_id').notEmpty().withMessage('Hostel ID is required'),
     body('h_name').notEmpty().withMessage('Hostel name is required'),
@@ -227,7 +231,7 @@ const[existingHostel]=await db.execute(
 if(existingHostel.length>0){
     return res.status(400).json({message:'Hostel already exists'});
 }
-//here I am checking if warden is already present and verifying that it has already a hostel assigned to it
+
 if(warden_id){
     const[warden]=await db.execute(
     'select warden_id from warden where warden_id=?',
@@ -261,7 +265,6 @@ res.status(500).json({message:'Failed to create a hostel',
 });
 }
 });
-// API  to Create support Admin
 app.post('/createSupportAdmin', [
     body('D_Name')
         .isIn(['Maintenance', 'Pest-control', 'Housekeeping', 'IT'])
@@ -327,7 +330,6 @@ app.post('/loginWarden', async (req, res) => {
 app.post('/loginStudent', async (req, res) => {
     const { snu_email_id, password } = req.body;
 
-    // Validate required fields
     if (!snu_email_id || !password) {
         return res.status(400).json({ message: 'Email and password are required' });
     }
@@ -406,9 +408,7 @@ app.post('/loginSupportAdmin', async (req, res) => {
   }
 });
 
-// Replace the student profile routes with these versions
 
-// Get student profile
 app.get('/student/profile', verifyToken, async (req, res) => {
     try {
       const roll_no = req.roll_no;

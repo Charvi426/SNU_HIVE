@@ -10,6 +10,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Footer from './components/layout/footer';
 import SupportDashboard from './components/dashboard/SupportDashboard';
 import WardenDashboard from './components/dashboard/WardenDashboard';
+import LostFoundGrid from './pages/lostAndFound';
 
 function App() {
   return (
@@ -19,22 +20,19 @@ function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />
-          {/* Update login routes */}
           <Route path="/login/student" element={<LoginForm userType="student" />} />
           <Route path="/login/warden" element={<LoginForm userType="warden" />} />
           <Route path="/login/support" element={<LoginForm userType="support" />} />
           
-          {/* Update signup routes */}
           <Route path="/signup/student" element={<SignupForm userType="student" />} />
           <Route path="/signup/warden" element={<SignupForm userType="warden" />} />
           <Route path="/signup/support" element={<SignupForm userType="support" />} />
           
-          {/* Dashboard routes remain the same */}
           <Route path="/dashboard/student" element={<StudentDashboard />} />
           <Route path="/dashboard/warden" element={<WardenDashboard />} />
           <Route path="/dashboard/support" element={<SupportDashboard />} />
+          <Route path="/lost-found" element={<LostFoundGrid />} />
         </Routes>
-        
       </div>
       <Footer />
 

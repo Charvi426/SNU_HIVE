@@ -137,7 +137,7 @@ const SignupForm = ({ userType }) => {
 
         case 'warden':
   requestData = {
-    warden_id: formData.warden_id.padStart(2, '0'), // Ensures two digits with leading zero if needed
+    warden_id: formData.warden_id.padStart(2, '0'), 
     w_name: formData.w_name.trim(),
     email: formData.email.trim().toLowerCase(),
     password: formData.password,
@@ -177,7 +177,6 @@ const SignupForm = ({ userType }) => {
       });
 
       if (response.data.success) {
-        // Attempt automatic login after successful signup
         const loginData = {
           ...(userType === 'student' ? { 
             snu_email_id: formData.snu_email_id 
@@ -198,15 +197,12 @@ const SignupForm = ({ userType }) => {
         );
 
         if (loginResponse.data.success) {
-          // Store auth data
           localStorage.setItem('token', loginResponse.data.token);
           localStorage.setItem('userType', userType);
           localStorage.setItem('userData', JSON.stringify(loginResponse.data.userData));
           
-          // Redirect to dashboard
           navigate(`/${userType}/dashboard`);
         } else {
-          // Fallback to login page if auto-login fails
           navigate(`/login/${userType}`);
         }
       } else {
@@ -239,24 +235,23 @@ const SignupForm = ({ userType }) => {
         return null;
     }
   };
-// ...existing imports and initial code...
 
 return (
   <div className="min-h-screen bg-gray-50  p-8 sm:p-12 lg:p-16">
     <div className="flex min-h-[80vh] max-w-6xl mx-auto rounded-xl overflow-hidden shadow-2xl">
-      {/* Left side - Image */}
+      {}
       <div className="hidden md:flex md:w-1/2 bg-[#432818]">
         <img
-          src="/images/chessgarden.jpg" // Update with your image path
+          src="/images/chessgarden.jpg" 
           alt="SNUHive Welcome"
           className="w-full h-full object-cover"
         />
       </div>
 
-      {/* Right side - Form */}
+      {}
       <div className="w-full md:w-1/2 flex flex-col justify-center px-8 py-12 bg-white">
         <div className="max-w-md w-full mx-auto">
-          {/* Logo or Icon could go here */}
+          {}
           <h2 className="text-3xl font-bold text-[#432818] text-center mb-8">
             Create {userType} Account
           </h2>
@@ -265,7 +260,7 @@ return (
             <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r" role="alert">
               <div className="flex">
                 <div className="flex-shrink-0">
-                  {/* Warning icon */}
+                  {}
                   <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>

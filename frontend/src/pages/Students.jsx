@@ -18,7 +18,6 @@ const Students = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate API call with random data
     setTimeout(() => {
       setStudents(generateRandomStudents())
       setLoading(false)

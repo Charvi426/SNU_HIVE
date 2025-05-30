@@ -16,7 +16,6 @@ const SupportDashboard = () => {
     'Rejected': 'bg-red-100 text-red-800'
   };
 
-  // Update status mappings
 const statusMapping = {
     'PENDING': 'Pending',
     'ACTIVE': 'In Progress',
@@ -24,8 +23,6 @@ const statusMapping = {
     'REJECTED': 'Rejected'
   };
   
-
-// Update the status display mapping
 
   const fetchComplaints = async () => {
     try {

@@ -32,6 +32,12 @@ const Navbar = () => {
             </span>
           </Link>
           <div className="flex space-x-4">
+            <Link
+                      to="/lost-found"
+                      className="px-3 py-2 hover:bg-[#432818] rounded-md"
+                    >
+                      Lost & Found
+            </Link>
             <div className="relative" ref={loginRef}>
               <button
                 onClick={() => setIsLoginOpen(!isLoginOpen)}
@@ -96,6 +102,7 @@ const Navbar = () => {
                   >
                     Support Admin Sign Up
                   </Link>
+            
                 </div>
               )}
             </div>

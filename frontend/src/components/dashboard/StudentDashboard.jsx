@@ -23,6 +23,36 @@ const StudentDashboard = () => {
     date: "",
   });
 
+// Add after other useState declarations
+const [lostFoundItems, setLostFoundItems] = useState([]);
+const [newLostFound, setNewLostFound] = useState({
+  item_name: "",
+  found_location: "",
+  status: "LOST",
+  phone_number: "",
+  image: null
+});
+
+// Add after other fetch functions
+const fetchLostFoundItems = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication required");
+
+    const response = await axios.get(
+      "http://localhost:5000/api/lostfound",
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    console.log("Lost and Found items:", response.data);
+    setLostFoundItems(response.data);
+  } catch (err) {
+    console.error("Error fetching lost and found items:", err);
+  }
+};
+
   const fetchComplaints = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -43,7 +73,7 @@ const StudentDashboard = () => {
       if (err.response?.status === 401) {
         navigate("/login/student");
       } else {
-        setError(err.message || "Failed to fetch complaints");
+        //setError(err.message || "Failed to fetch complaints");
       }
     }
   };
@@ -64,9 +94,52 @@ const StudentDashboard = () => {
       setFoodRequests(response.data);
     } catch (err) {
       console.error("Error fetching food requests:", err);
-      setError(err.response?.data?.message || "Failed to fetch food requests");
+      //setError(err.response?.data?.message || "Failed to fetch food requests");
     }
   };
+
+// Add after other submit handlers
+const handleLostFoundSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const token = localStorage.getItem("token");
+     if (!token) {
+      setError("Authentication required");
+      return;
+    }
+
+    console.log('Token being sent:', token); // Debug log
+
+
+    const formData = new FormData();
+    formData.append('item_name', newLostFound.item_name);
+    formData.append('found_location', newLostFound.found_location);
+    formData.append('status', newLostFound.status);
+    formData.append('phone_number', newLostFound.phone_number);
+    if (newLostFound.image) {
+      formData.append('image', newLostFound.image);
+    }
+
+    await axios.post("http://localhost:5000/api/lostfound", formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    setNewLostFound({
+      item_name: "",
+      found_location: "",
+      status: "LOST",
+      phone_numer: "",
+      image: null
+    });
+    await fetchLostFoundItems();
+  } catch (err) {
+    console.error("Lost and Found submission error:", err);
+    setError(err.response?.data?.message || "Failed to submit lost and found item");
+  }
+};
 
   const handleComplaintSubmit = async (e) => {
     e.preventDefault();
@@ -130,12 +203,13 @@ const StudentDashboard = () => {
           navigate("/login/student");
           return;
         }
-
-        if (activeTab === "complaints") {
-          await fetchComplaints();
-        } else {
-          await fetchFoodRequests();
-        }
+if (activeTab === "complaints") {
+        await fetchComplaints();
+      } else if (activeTab === "food") {
+        await fetchFoodRequests();
+      } else if (activeTab === "lostfound") {
+        await fetchLostFoundItems();
+      }
       } catch (err) {
         console.error("Dashboard initialization failed:", err);
         setError("Failed to initialize dashboard");
@@ -208,6 +282,17 @@ const StudentDashboard = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab("lostfound")}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === "lostfound"
+                ? "bg-[#432818] text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            Lost & Found
+          </button>
+
+          <button
             onClick={() => setActiveTab("profile")}
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               activeTab === "profile"
@@ -224,6 +309,143 @@ const StudentDashboard = () => {
             {error}
           </div>
         )}
+
+{activeTab === "lostfound" && (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h1 className="text-3xl font-bold text-gray-900">Lost & Found</h1>
+      <button
+        onClick={fetchLostFoundItems}
+        className="px-4 py-2 bg-[#432818] text-white rounded hover:opacity-90 transition-opacity"
+      >
+        Refresh
+      </button>
+    </div>
+
+    {/* Lost and Found Form */}
+    <div className="bg-white rounded-lg shadow p-6">
+      <h2 className="text-2xl font-bold mb-4">Report Lost/Found Item</h2>
+      <form onSubmit={handleLostFoundSubmit} className="space-y-4">
+        <div>
+          <label className="block mb-2">Item Name</label>
+          <input
+            type="text"
+            className="w-full p-2 border rounded"
+            value={newLostFound.item_name}
+            onChange={(e) =>
+              setNewLostFound({
+                ...newLostFound,
+                item_name: e.target.value,
+              })
+            }
+            required
+            placeholder="Enter item name"
+          />
+        </div>
+        <div>
+          <label className="block mb-2">Location</label>
+          <input
+            type="text"
+            className="w-full p-2 border rounded"
+            value={newLostFound.found_location}
+            onChange={(e) =>
+              setNewLostFound({
+                ...newLostFound,
+                found_location: e.target.value,
+              })
+            }
+            required
+            placeholder="Enter location"
+          />
+        </div>
+        <div>
+          <label className="block mb-2">Status</label>
+          <select
+            className="w-full p-2 border rounded"
+            value={newLostFound.status}
+            onChange={(e) =>
+              setNewLostFound({
+                ...newLostFound,
+                status: e.target.value,
+              })
+            }
+             required
+          >
+            <option value="LOST">Lost</option>
+            <option value="FOUND">Found</option>
+          </select>
+        </div>
+        <div>
+          <label className="block mb-2">Phone number</label>
+          <input
+            type="text"
+            className="w-full p-2 border rounded"
+            value={newLostFound.phone_number}
+            onChange={(e) =>
+              setNewLostFound({
+                ...newLostFound,
+                phone_number: e.target.value,
+              })
+            }
+            required
+            placeholder="Enter Phone number"
+          />
+        </div>
+        <div>
+          <label className="block mb-2">Image</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) =>
+              setNewLostFound({
+                ...newLostFound,
+                image: e.target.files[0],
+              })
+            }
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        <button
+          type="submit"
+          className="bg-[#432818] text-white px-4 py-2 rounded hover:opacity-90 transition-opacity"
+        >
+          Submit Report
+        </button>
+      </form>
+    </div>
+
+    {/* Lost and Found List */}
+    <div className="space-y-4">
+      {lostFoundItems.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-lg shadow">
+          <p className="text-gray-500 text-lg">No items found</p>
+        </div>
+      ) : (
+        lostFoundItems.map((item) => (
+          <div
+            key={item.item_id}
+            className="bg-[#432818] text-white rounded-lg shadow p-6"
+          >
+            {item.image_path && (
+              <img
+                src={item.image_path}
+                alt={item.item_name}
+                className="w-32 h-32 object-cover rounded mb-4"
+              />
+            )}
+            <p className="font-semibold">Item: {item.item_name}</p>
+            <p className="mt-2">Location: {item.found_location}</p>
+            <p className="mt-2">Status: {item.status}</p>
+            <p classname="mt-2">Phone number:  {item.phone_number}</p>
+            <p className="mt-2 text-sm opacity-75">
+              Reported on: {new Date(item.report_date).toLocaleDateString()}
+            </p>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
 
         {/* Complaints Section */}
         {activeTab === "complaints" && (

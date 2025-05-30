@@ -13,8 +13,14 @@ const verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, secretKey);
-    console.log("Decoded token payload:", decoded);
-    req.roll_no = decoded.roll_no;
+    req.user = {
+            roll_no: decoded.roll_no || decoded.id,
+            userType: decoded.userType,
+            email: decoded.email
+        };
+
+        console.log('Decoded token:', decoded);
+        console.log('User set in request:', req.user);
     next();
   } catch (err) {
     console.error('Token verification error:', err.message);

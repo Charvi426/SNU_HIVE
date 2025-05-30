@@ -8,13 +8,11 @@ import verifyWardenToken from './middleware/verifyWardenToken.js';
 const router = express.Router();
 
 
-
-// Test route
 router.get('/test', (req, res) => {
     res.json({ message: 'Food request routes working' });
 });
 
-// Create food request
+
 router.post('/foodrequest', verifyToken, [
     body('food_id')
         .matches(/^\d{4}$/)
@@ -41,7 +39,6 @@ router.post('/foodrequest', verifyToken, [
         const { food_id, type, date } = req.body;
         const roll_no = req.roll_no;
 
-        // Get student's hostel_id
         const [student] = await db.execute(
             'SELECT hostel_id FROM student WHERE roll_no = ?',
             [roll_no]
@@ -51,7 +48,6 @@ router.post('/foodrequest', verifyToken, [
             return res.status(400).json({ message: 'Student not assigned to any hostel' });
         }
 
-        // Create the food request
         await db.execute(
             `INSERT INTO food_request (food_id, roll_no, hostel_id, type, date, status)
              VALUES (?, ?, ?, ?, ?, 'Pending')`,
@@ -102,7 +98,6 @@ router.get('/foodrequest/student', verifyToken, async (req, res) => {
     }
 });
 
-// Add debug middleware
 router.use((req, res, next) => {
     console.log('Food request route accessed:', {
         method: req.method,
@@ -112,7 +107,6 @@ router.use((req, res, next) => {
     next();
 });
 
-// Get all food requests for warden's hostel
 router.get('/foodrequests', verifyWardenToken, async (req, res) => {
     try {
         console.log('Warden ID from token:', req.warden?.warden_id);
@@ -148,12 +142,10 @@ router.patch('/foodrequest/:food_id/status', verifyWardenToken, [
         .withMessage('Status must be Pending, Approved, or Rejected')
 ], async (req, res) => {
     try {
-        // Clean up the food_id parameter by removing any colons
         const food_id = req.params.food_id.replace(':', '');
         const { status } = req.body;
         const warden_id = req.warden?.warden_id;
 
-        // Debug logging
         console.log('Cleaned parameters:', {
             originalId: req.params.food_id,
             cleanedId: food_id,
@@ -161,7 +153,6 @@ router.patch('/foodrequest/:food_id/status', verifyWardenToken, [
             warden_id
         });
 
-        // Check food request existence
         const [foodRequests] = await db.execute(
             `SELECT fr.*, s.s_name, h.h_name, h.hostel_id
              FROM food_request fr
@@ -182,7 +173,6 @@ router.patch('/foodrequest/:food_id/status', verifyWardenToken, [
             });
         }
 
-        // Continue with the update
         const [result] = await db.execute(
             'UPDATE food_request SET status = ? WHERE food_id = ?',
             [status, food_id]

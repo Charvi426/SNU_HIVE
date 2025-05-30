@@ -6,7 +6,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 const LoginForm = ({ userType }) => {
   const navigate = useNavigate();
-  // Add loading state
+  
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     snu_email_id: "",
@@ -23,7 +23,6 @@ const LoginForm = ({ userType }) => {
       let endpoint = "";
       let requestData = {};
 
-      // Input validation
       if (!formData.password || !(formData.email || formData.snu_email_id)) {
         throw new Error("Please fill in all fields");
       }
@@ -54,7 +53,6 @@ const LoginForm = ({ userType }) => {
           throw new Error("Invalid user type");
       }
 
-      // Debug log before making request
       console.log("Making login request:", {
         endpoint,
         email: requestData.email || formData.snu_email_id,
@@ -82,7 +80,6 @@ const LoginForm = ({ userType }) => {
         throw new Error("No authentication token received");
       }
 
-      // Store authentication data
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("userType", userType);
       localStorage.setItem("email", requestData.email);
@@ -117,7 +114,7 @@ const LoginForm = ({ userType }) => {
       <div className="container h-screen">
         <div className="flex items-center justify-center h-full">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-[1800px] bg-white rounded-lg shadow-xl p-4">
-            {/* Left side - Image with increased dimensions */}
+            {}
             <div className="hidden md:flex items-center justify-center bg-gray-50 rounded-l-lg overflow-hidden">
               <Image
                 src="/images/student.jpg"
@@ -132,7 +129,7 @@ const LoginForm = ({ userType }) => {
                 alt="Login illustration"
               />
             </div>
-            {/* Right side - Form */}
+            {}
             <div className="flex flex-col justify-center p-8">
               <div className="mb-8">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -199,8 +196,9 @@ const LoginForm = ({ userType }) => {
                 <button
                   type="submit"
                   className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#432818] hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  disabled={isLoading}
                 >
-                  Sign in
+                  {isLoading ? "Signing in..." : "Sign in"}
                 </button>
               </form>
             </div>

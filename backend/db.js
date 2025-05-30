@@ -7,10 +7,8 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load .env from parent directory
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
-// Debug configuration for troubleshooting
 console.log('Config path:', join(__dirname, '..', '.env'));
 console.log('Environment variables loaded:', {
     DB_HOST: process.env.DB_HOST,
@@ -18,30 +16,25 @@ console.log('Environment variables loaded:', {
     DB_DATABASE: process.env.DB_DATABASE,
     hasPassword: !!process.env.DB_PASSWORD
 });
-// Validate environment variables
+
 if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_DATABASE) {
     console.error('Missing required environment variables');
     process.exit(1);
 }
 
-// Create connection pool with only supported options
 const pool = mysql.createPool({
-    // Basic connection settings
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
 
-    // Pool configuration
     connectionLimit: 50,
     waitForConnections: true,
     queueLimit: 25,
 
-    // Timeout in milliseconds
     connectTimeout: 60000
 });
 
-// Test database connection
 try {
     const connection = await pool.getConnection();
     const [result] = await connection.query('SELECT 1');
