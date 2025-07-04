@@ -12,10 +12,10 @@ useEffect(() => {
     const fetchItems = async () => {
       setLoading(true);
       try {
-        let url = 'http://localhost:5000/api/lostfound';
+        let url = 'https://snu-hive-backend.onrender.com/api/lostfound';
         
         if (filter !== 'ALL') {
-          url = `http://localhost:5000/api/lostfound/status/${filter}`;
+          url = `https://snu-hive-backend.onrender.com/api/lostfound/status/${filter}`;
         }
 
         console.log('Fetching from URL:', url); // Debug log

@@ -45,7 +45,7 @@ router.get('/lostfound', async (req, res) => {
             return {
                 ...item.toObject(),
                 s_name: student?.s_name,
-                image_path: item.image_path ? `https://snu-hivefrontend.onrender.com/${item.image_path}` : null
+                image_path: item.image_path ? `https://snu-hive-backend.onrender.com/${item.image_path}` : null
             };
         });
 
@@ -76,7 +76,7 @@ router.get('/lostfound/status/:status', async (req, res) => {
             return {
                 ...item.toObject(),
                 s_name: student?.s_name,
-                image_path: item.image_path ? `https://snu-hivefrontend.onrender.com/${item.image_path}` : null
+                image_path: item.image_path ? `https://snu-hive-backend.onrender.com/${item.image_path}` : null
             };
         });
 
