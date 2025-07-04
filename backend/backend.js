@@ -42,11 +42,11 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/api',foodrequestRoutes);
-app.use('/', complaintRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/api', lostFoundRoutes);
-app.get('/test', (req, res) => {
+app.use(`${import.meta.env.REACT_APP_API_URL}/api`,foodrequestRoutes);
+app.use(`${import.meta.env.REACT_APP_API_URL}/`, complaintRoutes);
+app.use(`${import.meta.env.REACT_APP_API_URL}/uploads`, express.static(path.join(__dirname, 'uploads')));
+app.use(`${import.meta.env.REACT_APP_API_URL}/api`, lostFoundRoutes);
+app.get(`${import.meta.env.REACT_APP_API_URL}/test`, (req, res) => {
     res.json({ message: 'Server is working' });
 });
 
@@ -60,7 +60,7 @@ try {
     }
 }
 
-app.post('/createWarden', [
+app.post(`${import.meta.env.REACT_APP_API_URL}/createWarden`, [
     body('warden_id').notEmpty().withMessage('ID is required'),
     body('w_name').notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Invalid email format'),
@@ -96,7 +96,7 @@ app.post('/createWarden', [
 });
 
 
-app.post('/createStudent', [
+app.post(`${import.meta.env.REACT_APP_API_URL}/createStudent`, [
     body('roll_no').notEmpty().withMessage('Roll number is required'),
     body('s_name').notEmpty().withMessage('Name is required'),
     body('dept').notEmpty().withMessage('Department is required'),
@@ -158,7 +158,7 @@ app.post('/createStudent', [
 });
 
 
-app.post('/createHostel', [
+app.post(`${import.meta.env.REACT_APP_API_URL}/createHostel`, [
     body('hostel_id').notEmpty().withMessage('Hostel ID is required'),
     body('h_name').notEmpty().withMessage('Hostel name is required'),
     body('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive number'),
@@ -206,7 +206,7 @@ app.post('/createHostel', [
     }
 });
 
-app.post('/createSupportAdmin', [
+app.post(`${import.meta.env.REACT_APP_API_URL}/createSupportAdmin`, [
     body('D_Name')
         .isIn(['Maintenance', 'Pest-control', 'Housekeeping', 'IT'])
         .withMessage('Department Name must be one of: Maintenance, Pest-control, Housekeeping, IT'),
@@ -243,7 +243,7 @@ app.post('/createSupportAdmin', [
 });
 
 // Warden Login
-app.post('/loginWarden', async (req, res) => {
+app.post(`${import.meta.env.REACT_APP_API_URL}/loginWarden`, async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
@@ -272,7 +272,7 @@ app.post('/loginWarden', async (req, res) => {
 });
 
 
-app.post('/loginStudent', async (req, res) => {
+app.post(`${import.meta.env.REACT_APP_API_URL}/loginStudent`, async (req, res) => {
     const { snu_email_id, password } = req.body;
 
     if (!snu_email_id || !password) {
@@ -317,7 +317,7 @@ app.post('/loginStudent', async (req, res) => {
 });
 
 // Support Admin Login
-app.post('/loginSupportAdmin', async (req, res) => {
+app.post(`${import.meta.env.REACT_APP_API_URL}/loginSupportAdmin`, async (req, res) => {
     const { email, password } = req.body;
 
     try {
@@ -350,7 +350,7 @@ app.post('/loginSupportAdmin', async (req, res) => {
 // Student Profile (with hostel name)
 import Hostel from './models/Hostel.js';
 
-app.get('/student/profile', verifyToken, async (req, res) => {
+app.get(`${import.meta.env.REACT_APP_API_URL}/student/profile`, verifyToken, async (req, res) => {
     try {
         const roll_no = req.roll_no;
         console.log('Fetching profile for:', roll_no);
