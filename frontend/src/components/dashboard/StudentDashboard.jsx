@@ -32,7 +32,7 @@ const [newLostFound, setNewLostFound] = useState({
   phone_number: "",
   image: null
 });
-
+const API_URL = import.meta.env.VITE_REACT_APP_API_URL;
 // Add after other fetch functions
 const fetchLostFoundItems = async () => {
   try {
@@ -40,7 +40,7 @@ const fetchLostFoundItems = async () => {
     if (!token) throw new Error("Authentication required");
 
     const response = await axios.get(
-      "http://localhost:5000/api/lostfound",
+      `${API_URL}/api/lostfound`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -59,7 +59,7 @@ const fetchLostFoundItems = async () => {
       if (!token) throw new Error("Authentication required");
 
       const response = await axios.get(
-        "http://localhost:5000/complaint/student",
+        `${API_URL}/complaint/student`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -84,7 +84,7 @@ const fetchLostFoundItems = async () => {
       if (!token) throw new Error("Authentication required");
 
       const response = await axios.get(
-        "http://localhost:5000/api/foodrequest/student",
+        `${API_URL}/api/foodrequest/student`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -120,7 +120,7 @@ const handleLostFoundSubmit = async (e) => {
       formData.append('image', newLostFound.image);
     }
 
-    await axios.post("http://localhost:5000/api/lostfound", formData, {
+    await axios.post(`${API_URL}/api/lostfound`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -147,7 +147,7 @@ const handleLostFoundSubmit = async (e) => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication required");
 
-      await axios.post("http://localhost:5000/complaint", newComplaint, {
+      await axios.post(`${API_URL}/complaint`, newComplaint, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -174,7 +174,7 @@ const handleLostFoundSubmit = async (e) => {
       if (!token) throw new Error("Authentication required");
 
       await axios.post(
-        "http://localhost:5000/api/foodrequest",
+        `${API_URL}/api/foodrequest`,
         newFoodRequest,
         {
           headers: {
@@ -227,7 +227,7 @@ if (activeTab === "complaints") {
       if (!token) throw new Error("Authentication required");
 
       const response = await axios.get(
-        "http://localhost:5000/student/profile",
+        `${API_URL}/student/profile`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

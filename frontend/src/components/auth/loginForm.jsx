@@ -58,15 +58,11 @@ const LoginForm = ({ userType }) => {
         email: requestData.email || formData.snu_email_id,
         userType,
       });
-
+      const API_URL = import.meta.env.VITE_REACT_APP_API_URL;
       const response = await axios.post(
-        `http://localhost:5000${endpoint}`,
+        `${API_URL}${endpoint}`,
         requestData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        { headers: { "Content-Type": "application/json" } }
       );
 
       console.log("Server response:", {

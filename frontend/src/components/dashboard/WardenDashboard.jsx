@@ -20,11 +20,11 @@ const WardenDashboard = () => {
     'APPROVED': 'Approved',
     'REJECTED': 'Rejected'
   };
-
+const API_URL = import.meta.env.VITE_REACT_APP_API_URL;
   const fetchFoodRequests = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/foodrequests', {
+      const response = await axios.get(`${API_URL}/api/foodrequests`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -55,7 +55,7 @@ const WardenDashboard = () => {
       console.log('Sending status update:', { foodId, newStatus });
 
       const response = await axios.patch(
-        `http://localhost:5000/api/foodrequest/${foodId}/status`,
+        `${API_URL}/api/foodrequest/${foodId}/status`,
         { status: newStatus },
         {
           headers: {

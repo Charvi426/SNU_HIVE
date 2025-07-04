@@ -23,11 +23,11 @@ const statusMapping = {
     'REJECTED': 'Rejected'
   };
   
-
+const API_URL = import.meta.env.VITE_REACT_APP_API_URL ;
   const fetchComplaints = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/department-complaints', {
+      const response = await axios.get(`${API_URL}/department-complaints`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -64,7 +64,7 @@ const statusMapping = {
       });
   
       const response = await axios.patch(
-        `http://localhost:5000/complaint/${complaintId}/status`,
+        `${API_URL}/complaint/${complaintId}/status`,
         { status: backendStatus },
         {
           headers: {
