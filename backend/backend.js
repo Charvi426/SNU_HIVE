@@ -12,6 +12,15 @@ import lostFoundRoutes from './lostNfound.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+
+import hostel from './models/Hostel.js';
+import Warden from './models/warden.js';
+import SupportDept from './models/SupportDept.js';
+import Student from './models/Student.js';
+
+import { mkdirSync } from 'fs';
+await db();
+
 const app = express();
 const jwtSecret = "zxcvasdfgtrewqyhbvcxzfdsahfs";
 
@@ -41,81 +50,6 @@ app.get('/test', (req, res) => {
     res.json({ message: 'Server is working' });
 });
 
-await db.execute(`CREATE TABLE IF NOT EXISTS WARDEN (
-    Warden_id VARCHAR(10) PRIMARY KEY,
-    w_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    contact_no VARCHAR(15) UNIQUE NOT NULL
-)`);
-
-await db.execute(`CREATE TABLE IF NOT EXISTS HOSTEL (
-    hostel_id VARCHAR(10) PRIMARY KEY,
-    h_name VARCHAR(255) NOT NULL,
-    capacity INT NOT NULL,
-    warden_id VARCHAR(10), 
-    FOREIGN KEY (warden_id) REFERENCES WARDEN(Warden_id) ON DELETE SET NULL
-)`);
-
-await db.execute(`CREATE TABLE IF NOT EXISTS STUDENT (
-    roll_no VARCHAR(10) PRIMARY KEY,
-    s_name VARCHAR(255) NOT NULL,
-    dept VARCHAR(255) NOT NULL,
-    batch INT NOT NULL,
-    contact_no VARCHAR(15) UNIQUE NOT NULL,
-    snu_email_id VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    room_no VARCHAR(10) NOT NULL,
-    hostel_id VARCHAR(10) DEFAULT NULL, 
-    parent_contact VARCHAR(15) NOT NULL,
-    FOREIGN KEY (hostel_id) REFERENCES HOSTEL(hostel_id) ON DELETE SET NULL
-)`);
-
-await db.execute(`CREATE TABLE IF NOT EXISTS SUPPORT_DEPT (
-    D_Name ENUM('Maintenance', 'Pest-control', 'Housekeeping', 'IT') PRIMARY KEY,
-    warden_id VARCHAR(10),
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    staff_capacity int NOT NULL,
-    foreign key (warden_id) references WARDEN(Warden_id) on delete set null
-)`);
-
-await db.execute(`CREATE TABLE IF NOT EXISTS Complaint(
-    complaint_id VARCHAR(36) PRIMARY KEY,
-    roll_no VARCHAR(255) DEFAULT NULL,  
-    FOREIGN KEY (roll_no) REFERENCES STUDENT(roll_no) ON DELETE SET NULL,
-    hostel_id VARCHAR(10) DEFAULT NULL, 
-    FOREIGN KEY (hostel_id) REFERENCES HOSTEL(hostel_id) ON DELETE SET NULL,
-    d_name VARCHAR(20) NOT NULL,
-    status VARCHAR(10) NOT NULL,
-    complaint_date DATE NOT NULL,
-    description VARCHAR(300) NOT NULL
-)`);
-
-await db.execute(`CREATE TABLE IF NOT EXISTS LostAndFound(
-    item_id VARCHAR(10) PRIMARY KEY,
-    roll_no VARCHAR(255) DEFAULT NULL,  
-    FOREIGN KEY (roll_no) REFERENCES STUDENT(roll_no) ON DELETE SET NULL,
-    item_name VARCHAR(255) NOT NULL,
-    found_location VARCHAR(255) NOT NULL,
-    report_date DATE NOT NULL,
-    status VARCHAR(10) NOT NULL,
-    phone_number VARCHAR(11) NOT NULL,
-    image_path VARCHAR(255)
-)`);
-
-await db.execute(`CREATE TABLE IF NOT EXISTS food_request (
-    food_id VARCHAR(10) PRIMARY KEY,
-    roll_no VARCHAR(10) DEFAULT NULL,  
-    hostel_id VARCHAR(10) DEFAULT NULL, 
-    type VARCHAR(50) NOT NULL,
-    date DATE NOT NULL,
-    status VARCHAR(10) NOT NULL default 'Pending',
-    remarks Text,
-    FOREIGN KEY (roll_no) REFERENCES STUDENT(roll_no) ON DELETE SET NULL,
-    FOREIGN KEY (hostel_id) REFERENCES HOSTEL(hostel_id) ON DELETE SET NULL
-)`);
-
 const uploadsDir = join(__dirname, 'uploads', 'lostfound');
 try {
     mkdirSync(uploadsDir, { recursive: true });
@@ -144,8 +78,15 @@ app.post('/createWarden', [
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        await db.execute(`INSERT INTO WARDEN (Warden_id, w_name, email, password, contact_no) VALUES (?, ?, ?, ?, ?)`,
-            [warden_id, w_name, email, hashedPassword, contact_no]);
+         const warden = new Warden({
+            warden_id,
+            w_name,
+            email,
+            password: hashedPassword,
+            contact_no
+        });
+
+        await warden.save();
 
         res.status(200).json({ message: 'User created successfully' });
     } catch (error) {
@@ -153,6 +94,7 @@ app.post('/createWarden', [
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
+
 
 app.post('/createStudent', [
     body('roll_no').notEmpty().withMessage('Roll number is required'),
@@ -171,38 +113,42 @@ app.post('/createStudent', [
         return res.status(400).json({ errors: errors.array() });
     }
 
-
-try {
+    try {
         const { roll_no, s_name, dept, batch, contact_no, snu_email_id, password, room_no, hostel_id, parent_contact } = req.body;
 
-
-const [hostel]=await db.execute(
-            `select h.*, (select count(*) from student where hostel_id=?) as current_occupancy from hostel h where h.hostel_id=?`,
-            [hostel_id,hostel_id]
-);
-
-        if(hostel.length==0){
-            return res.status(400).json({message:'This hostel does not exist'});
+        // Check hostel existence and capacity
+        const hostel = await Hostel.findOne({ hostel_id });
+        if (!hostel) {
+            return res.status(400).json({ message: 'This hostel does not exist' });
         }
-if(hostel[0].current_occupancy>=hostel[0].capacity)
-{
-    return res.status(400).json({message:'This hostel is full'});
+        const current_occupancy = await Student.countDocuments({ hostel_id });
+        if (current_occupancy >= hostel.capacity) {
+            return res.status(400).json({ message: 'This hostel is full' });
+        }
 
-}
-
-const [existingEmail] = await db.execute('select snu_email_id from student where snu_email_id=?',
-    [snu_email_id]
-);
-if(existingEmail.length>0){
-    return res.status(400).json({message:'This email is already registered'});
-}
+        // Check for existing email
+        const existingEmail = await Student.findOne({ snu_email_id });
+        if (existingEmail) {
+            return res.status(400).json({ message: 'This email is already registered' });
+        }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        await db.execute(`INSERT INTO STUDENT (roll_no, s_name, dept, batch, contact_no, snu_email_id, password, room_no, hostel_id, parent_contact) 
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-                          [roll_no, s_name, dept, batch, contact_no, snu_email_id, hashedPassword, room_no, hostel_id, parent_contact]);
+        const student = new Student({
+            roll_no,
+            s_name,
+            dept,
+            batch,
+            contact_no,
+            snu_email_id,
+            password: hashedPassword,
+            room_no,
+            hostel_id,
+            parent_contact
+        });
+
+        await student.save();
 
         res.status(200).json({ message: 'Student created successfully' });
     } catch (error) {
@@ -212,59 +158,54 @@ if(existingEmail.length>0){
 });
 
 
-app.post('/createHostel',[
+app.post('/createHostel', [
     body('hostel_id').notEmpty().withMessage('Hostel ID is required'),
     body('h_name').notEmpty().withMessage('Hostel name is required'),
-    body('capacity').isInt({min:1}).withMessage('Capacity must be a positive number'),
+    body('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive number'),
     body('warden_id').optional()
-],async (req,res)=>{
-    try{
-        const errors=validationResult(req);
-        if(!errors.isEmpty()){
-            return res.status(400).json({errors:errors.array()});
-}
-const {hostel_id,h_name,capacity,warden_id}=req.body;
-const[existingHostel]=await db.execute(
-    'select hostel_id from hostel where hostel_id=?',
-    [hostel_id]
-);
-if(existingHostel.length>0){
-    return res.status(400).json({message:'Hostel already exists'});
-}
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+        const { hostel_id, h_name, capacity, warden_id } = req.body;
 
-if(warden_id){
-    const[warden]=await db.execute(
-    'select warden_id from warden where warden_id=?',
-    [warden_id]
-    );
+        // Check for existing hostel
+        const existingHostel = await Hostel.findOne({ hostel_id });
+        if (existingHostel) {
+            return res.status(400).json({ message: 'Hostel already exists' });
+        }
 
+        // If warden_id is provided, check existence
+        if (warden_id) {
+            const warden = await Warden.findOne({ warden_id });
+            if (!warden) {
+                return res.status(400).json({ message: 'The specified warden does not exist' });
+            }
+        }
 
-    if(warden.length==0){
-        return res.status(400).json({message:'The specified warden does not exist'});
+        const hostel = new Hostel({
+            hostel_id,
+            h_name,
+            capacity,
+            warden_id: warden_id || null
+        });
+
+        await hostel.save();
+
+        res.status(201).json({
+            message: 'Hostel created successfully',
+            hostel: {
+                hostel_id, h_name, capacity, warden_id: warden_id || null
+            }
+        });
+    } catch (error) {
+        console.log("Error creating the hostel:", error);
+        res.status(500).json({ message: 'Failed to create a hostel', error: error.message });
     }
-}
-
-await db.execute(`insert into hostel(hostel_id,h_name,capacity,warden_id) values(?,?,?,?)`,
-    [hostel_id,h_name,capacity,warden_id|| null]
- );
-
-
- res.status(201).json({
-    message:'Hostel created successfully',
-    hostel:{
-        hostel_id,h_name,capacity,warden_id:warden_id||null//coz warden id is foreign key here 
-    }
- });
-
-}
-catch(error){
-    console.log("Error creating the hostel:",error);
-
-res.status(500).json({message:'Failed to create a hostel',
-    error:error.message
 });
-}
-});
+
 app.post('/createSupportAdmin', [
     body('D_Name')
         .isIn(['Maintenance', 'Pest-control', 'Housekeeping', 'IT'])
@@ -284,8 +225,15 @@ app.post('/createSupportAdmin', [
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        await db.execute(`INSERT INTO SUPPORT_DEPT (D_Name, warden_id, email, password, staff_capacity) VALUES (?, ?, ?, ?, ?)`,
-            [D_Name, warden_id || null, email, hashedPassword, staff_capacity]);
+        const supportAdmin = new SupportDept({
+            D_Name,
+            warden_id: warden_id || null,
+            email,
+            password: hashedPassword,
+            staff_capacity
+        });
+
+        await supportAdmin.save();
 
         res.status(201).json({ message: 'Support Admin created successfully' });
     } catch (error) {
@@ -294,6 +242,7 @@ app.post('/createSupportAdmin', [
     }
 });
 
+// Warden Login
 app.post('/loginWarden', async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -303,21 +252,17 @@ app.post('/loginWarden', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const [rows] = await db.execute(
-            'SELECT * FROM WARDEN WHERE email = ?', [email]
-        );
-
-        if (rows.length === 0) {
+        const warden = await Warden.findOne({ email });
+        if (!warden) {
             return res.status(400).json({ message: 'Try logging in with correct credentials' });
         }
 
-        const userData = rows[0]; 
-        const pwdCompare = await bcrypt.compare(password, userData.password);
+        const pwdCompare = await bcrypt.compare(password, warden.password);
         if (!pwdCompare) {
             return res.status(400).json({ message: 'Invalid credentials' });
-        } 
-        
-        const token = jwt.sign({ warden_id: userData.Warden_id }, jwtSecret, { expiresIn: '1h' });
+        }
+
+        const token = jwt.sign({ warden_id: warden.warden_id }, jwtSecret, { expiresIn: '1h' });
         res.json({ success: true, token });
 
     } catch (error) {
@@ -335,34 +280,33 @@ app.post('/loginStudent', async (req, res) => {
     }
 
     try {
-        const [rows] = await db.execute(
-            'SELECT * FROM STUDENT WHERE snu_email_id = ?', 
-            [snu_email_id]
-        );
+        console.log('Login attempt:', { snu_email_id, password });
+        const student = await Student.findOne({ snu_email_id });
+        console.log('Student found:', student);
 
-        if (rows.length === 0) {
+        if (!student) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        const userData = rows[0];
-        const pwdCompare = await bcrypt.compare(password, userData.password);
-        
+        const pwdCompare = await bcrypt.compare(password, student.password);
+        console.log('Password match:', pwdCompare);
+
         if (!pwdCompare) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         const token = jwt.sign(
-            { roll_no: userData.roll_no },
+            { roll_no: student.roll_no },
             jwtSecret,
             { expiresIn: '1h' }
         );
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             token,
             userData: {
-                roll_no: userData.roll_no,
-                name: userData.s_name
+                roll_no: student.roll_no,
+                name: student.s_name
             }
         });
 
@@ -372,76 +316,73 @@ app.post('/loginStudent', async (req, res) => {
     }
 });
 
+// Support Admin Login
 app.post('/loginSupportAdmin', async (req, res) => {
-  const { email, password } = req.body;
+    const { email, password } = req.body;
 
-  try {
-    const [rows] = await db.execute(
-      `SELECT D_Name, password FROM SUPPORT_DEPT WHERE email = ?`,
-      [email]
-    );
+    try {
+        const admin = await SupportDept.findOne({ email });
+        if (!admin) {
+            return res.status(401).json({ message: "Email not found" });
+        }
 
-    if (rows.length === 0) {
-      return res.status(401).json({ message: "Email not found" });
+        const isValidPassword = await bcrypt.compare(password, admin.password);
+        if (!isValidPassword) {
+            return res.status(401).json({ message: "Incorrect password" });
+        }
+
+        const token = jwt.sign(
+            { d_name: admin.D_Name },
+            jwtSecret,
+            { expiresIn: '1h' }
+        );
+
+        res.status(200).json({
+            message: "Login successful",
+            token
+        });
+    } catch (err) {
+        console.error("Support login error:", err);
+        res.status(500).json({ message: "Internal server error" });
     }
-
-    const admin = rows[0];
-
-    const isValidPassword = await bcrypt.compare(password, admin.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ message: "Incorrect password" });
-    }
-
-    const token = jwt.sign(
-      { d_name: admin.D_Name },
-      jwtSecret,
-      { expiresIn: '1h' }
-    );
-
-    res.status(200).json({
-      message: "Login successful",
-      token
-    });
-  } catch (err) {
-    console.error("Support login error:", err);
-    res.status(500).json({ message: "Internal server error" });
-  }
 });
 
+// Student Profile (with hostel name)
+import Hostel from './models/Hostel.js';
 
 app.get('/student/profile', verifyToken, async (req, res) => {
     try {
-      const roll_no = req.roll_no;
-      console.log('Fetching profile for:', roll_no);
-  
-      const [rows] = await db.execute(`
-        SELECT 
-          s.roll_no,
-          s.s_name,
-          s.dept,
-          s.batch,
-          s.contact_no,
-          s.snu_email_id,
-          s.room_no,
-          s.hostel_id,
-          s.parent_contact,
-          h.h_name
-        FROM STUDENT s
-        LEFT JOIN HOSTEL h ON s.hostel_id = h.hostel_id
-        WHERE s.roll_no = ?
-      `, [roll_no]);
-  
-      if (rows.length === 0) {
-        return res.status(404).json({ message: 'Student not found' });
-      }
-  
-      console.log('Found student profile');
-      res.json(rows[0]);
+        const roll_no = req.roll_no;
+        console.log('Fetching profile for:', roll_no);
+
+        const student = await Student.findOne({ roll_no });
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        let hostelName = null;
+        if (student.hostel_id) {
+            const hostel = await Hostel.findOne({ hostel_id: student.hostel_id });
+            hostelName = hostel ? hostel.h_name : null;
+        }
+
+        res.json({
+            roll_no: student.roll_no,
+            s_name: student.s_name,
+            dept: student.dept,
+            batch: student.batch,
+            contact_no: student.contact_no,
+            snu_email_id: student.snu_email_id,
+            room_no: student.room_no,
+            hostel_id: student.hostel_id,
+            parent_contact: student.parent_contact,
+            h_name: hostelName
+        });
     } catch (err) {
-      console.error('Error fetching student profile:', err);
-      res.status(500).json({ message: 'Failed to fetch profile', error: err.message });
+        console.error('Error fetching student profile:', err);
+        res.status(500).json({ message: 'Failed to fetch profile', error: err.message });
     }
-  });
+});
 
 app.use(complaintRoutes); 
 

@@ -2,7 +2,8 @@ import express from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
-import db from './db.js';
+import LostAndFound from './models/LostAndFound.js';
+import Student from './models/Student.js';
 import verifyToken from './middleware/verifyToken.js';
 
 const router = express.Router();
@@ -31,37 +32,24 @@ const upload = multer({
     }
 });
 
+// GET all lost and found items
 router.get('/lostfound', async (req, res) => {
     try {
+        const items = await LostAndFound.find().sort({ report_date: -1 });
+        // Get student names for each item
+        const rollNos = items.map(item => item.roll_no).filter(Boolean);
+        const students = await Student.find({ roll_no: { $in: rollNos } });
 
-         const [tables] = await db.execute(`
-            SELECT TABLE_NAME 
-            FROM information_schema.TABLES 
-            WHERE TABLE_NAME = 'LOSTANDFOUND'
-        `);
-
-        if (tables.length === 0) {
-            return res.status(404).json({
-                message: 'Lost and Found feature is not available yet',
-                error: 'Table not found'
-            });
-        }
-
-        const [items] = await db.execute(`
-            SELECT lf.*, s.s_name 
-            FROM LOSTANDFOUND lf
-            LEFT JOIN STUDENT s ON lf.roll_no = s.roll_no
-            ORDER BY lf.report_date DESC
-        `);
-
-        const itemsWithImageUrls = items.map(item => ({
-            ...item,
-            image_path: item.image_path ? 
-                `http://localhost:5000/${item.image_path}` : null
-        }));
+        const itemsWithImageUrls = items.map(item => {
+            const student = students.find(s => s.roll_no === item.roll_no);
+            return {
+                ...item.toObject(),
+                s_name: student?.s_name,
+                image_path: item.image_path ? `http://localhost:5000/${item.image_path}` : null
+            };
+        });
 
         res.json(itemsWithImageUrls);
-
     } catch (error) {
         console.error('Error fetching lost and found items:', error);
         res.status(500).json({
@@ -71,6 +59,7 @@ router.get('/lostfound', async (req, res) => {
     }
 });
 
+// GET lost and found items by status
 router.get('/lostfound/status/:status', async (req, res) => {
     try {
         const status = req.params.status.toUpperCase();
@@ -78,22 +67,20 @@ router.get('/lostfound/status/:status', async (req, res) => {
             return res.status(400).json({ message: 'Invalid status' });
         }
 
-        const [items] = await db.execute(`
-            SELECT lf.*, s.s_name 
-            FROM LOSTANDFOUND lf
-            LEFT JOIN STUDENT s ON lf.roll_no = s.roll_no
-            WHERE lf.status = ?
-            ORDER BY lf.report_date DESC
-        `, [status]);
+        const items = await LostAndFound.find({ status }).sort({ report_date: -1 });
+        const rollNos = items.map(item => item.roll_no).filter(Boolean);
+        const students = await Student.find({ roll_no: { $in: rollNos } });
 
-        const itemsWithImageUrls = items.map(item => ({
-            ...item,
-            image_path: item.image_path ? 
-                `http://localhost:5000/${item.image_path}` : null
-        }));
+        const itemsWithImageUrls = items.map(item => {
+            const student = students.find(s => s.roll_no === item.roll_no);
+            return {
+                ...item.toObject(),
+                s_name: student?.s_name,
+                image_path: item.image_path ? `http://localhost:5000/${item.image_path}` : null
+            };
+        });
 
         res.json(itemsWithImageUrls);
-
     } catch (error) {
         console.error('Error fetching lost and found items:', error);
         res.status(500).json({
@@ -103,34 +90,38 @@ router.get('/lostfound/status/:status', async (req, res) => {
     }
 });
 
+// POST report a lost/found item
 router.post('/lostfound', verifyToken, upload.single('image'), async (req, res) => {
     try {
-        const { item_name, found_location, status,phone_number } = req.body;
+        const { item_name, found_location, status, phone_number } = req.body;
 
-        if (!req.user || !req.user.roll_no) {
-            return res.status(401).json({ 
-                message: 'User authentication failed' 
-            });
+        // Use req.user or req.body for roll_no depending on your auth middleware
+        const roll_no = req.user?.roll_no || req.body.roll_no;
+        if (!roll_no) {
+            return res.status(401).json({ message: 'User authentication failed' });
         }
-
-        const roll_no = req.user.roll_no; 
-        const item_id = uuidv4().substring(0, 10); // Generate unique ID
-        const report_date = new Date().toISOString().split('T')[0];
-        const image_path = req.file ? req.file.path : null;
 
         // Validate required fields
         if (!item_name || !found_location || !status || !phone_number) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        // Insert into database
-        await db.execute(
-            `INSERT INTO LOSTANDFOUND (
-                item_id, roll_no, item_name, found_location, 
-                report_date, status, phone_number, image_path
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [item_id, roll_no, item_name, found_location, report_date, status, phone_number, image_path]
-        );
+        const item_id = uuidv4().substring(0, 10);
+        const report_date = new Date();
+        const image_path = req.file ? req.file.path : null;
+
+        const lostFound = new LostAndFound({
+            item_id,
+            roll_no,
+            item_name,
+            found_location,
+            report_date,
+            status,
+            phone_number,
+            image_path
+        });
+
+        await lostFound.save();
 
         res.status(201).json({
             message: 'Item reported successfully',
