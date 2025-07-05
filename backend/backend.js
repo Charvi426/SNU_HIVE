@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 import hostel from './models/Hostel.js';
-import Warden from './models/warden.js';
+import Warden from './models/Warden.js';
 import SupportDept from './models/SupportDept.js';
 import Student from './models/Student.js';
 
