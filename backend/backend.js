@@ -29,9 +29,16 @@ const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
+const allowedOrigins = ['https://snu-hivefrontend.onrender.com'];
+
 app.use(cors({
-  origin: 'https://snu-hivefrontend.onrender.com/', 
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json()); 
