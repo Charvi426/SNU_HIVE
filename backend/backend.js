@@ -99,7 +99,11 @@ app.post('/createWarden', [
 
         await warden.save();
 
-        res.status(200).json({ message: 'User created successfully' });
+        res.status(200).json({
+        success: true,
+        message: 'warden created successfully'
+        });
+        
     } catch (error) {
         console.error("Error inserting user:", error.message, error.stack);
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -160,8 +164,10 @@ app.post('/createStudent', [
         });
 
         await student.save();
-
-        res.status(200).json({ message: 'Student created successfully' });
+        res.status(200).json({
+        success: true,
+        message: 'Student created successfully'
+        });
     } catch (error) {
         console.error("Error inserting student:", error.message, error.stack);
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -245,8 +251,10 @@ app.post('/createSupportAdmin', [
         });
 
         await supportAdmin.save();
-
-        res.status(201).json({ message: 'Support Admin created successfully' });
+        res.status(200).json({
+        success: true,
+        message: 'Student created successfully'
+        });
     } catch (error) {
         console.error("Error inserting Support Admin:", error.message, error.stack);
         res.status(500).json({ message: 'Server error', error: error.message });
