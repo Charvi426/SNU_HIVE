@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 import hostel from './models/Hostel.js';
-import Warden from './models/Warden.js';
+import Warden from './models/warden.js';
 import SupportDept from './models/SupportDept.js';
 import Student from './models/Student.js';
 
@@ -29,7 +29,11 @@ const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://snu-hivefrontend.onrender.com/', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 
@@ -42,11 +46,11 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(`${import.meta.env.REACT_APP_API_URL}/api`,foodrequestRoutes);
-app.use(`${import.meta.env.REACT_APP_API_URL}/`, complaintRoutes);
-app.use(`${import.meta.env.REACT_APP_API_URL}/uploads`, express.static(path.join(__dirname, 'uploads')));
-app.use(`${import.meta.env.REACT_APP_API_URL}/api`, lostFoundRoutes);
-app.get(`${import.meta.env.REACT_APP_API_URL}/test`, (req, res) => {
+app.use('/api',foodrequestRoutes);
+app.use('/', complaintRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api', lostFoundRoutes);
+app.get('/test', (req, res) => {
     res.json({ message: 'Server is working' });
 });
 
@@ -60,7 +64,7 @@ try {
     }
 }
 
-app.post(`${import.meta.env.REACT_APP_API_URL}/createWarden`, [
+app.post('/createWarden', [
     body('warden_id').notEmpty().withMessage('ID is required'),
     body('w_name').notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Invalid email format'),
@@ -96,7 +100,7 @@ app.post(`${import.meta.env.REACT_APP_API_URL}/createWarden`, [
 });
 
 
-app.post(`${import.meta.env.REACT_APP_API_URL}/createStudent`, [
+app.post('/createStudent', [
     body('roll_no').notEmpty().withMessage('Roll number is required'),
     body('s_name').notEmpty().withMessage('Name is required'),
     body('dept').notEmpty().withMessage('Department is required'),
@@ -158,7 +162,7 @@ app.post(`${import.meta.env.REACT_APP_API_URL}/createStudent`, [
 });
 
 
-app.post(`${import.meta.env.REACT_APP_API_URL}/createHostel`, [
+app.post('/createHostel', [
     body('hostel_id').notEmpty().withMessage('Hostel ID is required'),
     body('h_name').notEmpty().withMessage('Hostel name is required'),
     body('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive number'),
@@ -206,7 +210,7 @@ app.post(`${import.meta.env.REACT_APP_API_URL}/createHostel`, [
     }
 });
 
-app.post(`${import.meta.env.REACT_APP_API_URL}/createSupportAdmin`, [
+app.post('/createSupportAdmin', [
     body('D_Name')
         .isIn(['Maintenance', 'Pest-control', 'Housekeeping', 'IT'])
         .withMessage('Department Name must be one of: Maintenance, Pest-control, Housekeeping, IT'),
@@ -243,7 +247,7 @@ app.post(`${import.meta.env.REACT_APP_API_URL}/createSupportAdmin`, [
 });
 
 // Warden Login
-app.post(`${import.meta.env.REACT_APP_API_URL}/loginWarden`, async (req, res) => {
+app.post('/loginWarden', async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
@@ -272,7 +276,7 @@ app.post(`${import.meta.env.REACT_APP_API_URL}/loginWarden`, async (req, res) =>
 });
 
 
-app.post(`${import.meta.env.REACT_APP_API_URL}/loginStudent`, async (req, res) => {
+app.post('/loginStudent', async (req, res) => {
     const { snu_email_id, password } = req.body;
 
     if (!snu_email_id || !password) {
@@ -317,7 +321,7 @@ app.post(`${import.meta.env.REACT_APP_API_URL}/loginStudent`, async (req, res) =
 });
 
 // Support Admin Login
-app.post(`${import.meta.env.REACT_APP_API_URL}/loginSupportAdmin`, async (req, res) => {
+app.post('/loginSupportAdmin', async (req, res) => {
     const { email, password } = req.body;
 
     try {
@@ -350,7 +354,7 @@ app.post(`${import.meta.env.REACT_APP_API_URL}/loginSupportAdmin`, async (req, r
 // Student Profile (with hostel name)
 import Hostel from './models/Hostel.js';
 
-app.get(`${import.meta.env.REACT_APP_API_URL}/student/profile`, verifyToken, async (req, res) => {
+app.get('/student/profile', verifyToken, async (req, res) => {
     try {
         const roll_no = req.roll_no;
         console.log('Fetching profile for:', roll_no);
