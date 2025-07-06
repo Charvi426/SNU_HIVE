@@ -76,11 +76,12 @@ npm run dev
 ```
 Screenshots
 
-![Homepage](images/homepage.png)
-![Login Page](images/LoginPage.png)
-![Student Dashboard](images/StudentDshboard.png)
-![Lost and Found](images/lost&found.png)
-![Support Admin Dashboard](images/SupportAdminDashboard.png)
+![Homepage](Images/HomePage.png)
+![Login Page](Images/LoginPage.png)
+![Student Dashboard](Images/StudentDshboard.png)
+![Lost and Found](Images/Lost&Found.png)
+![Support Admin Dashboard](Images/SupportAdminDashboard.png)
+
 
 Future Plans
 Here are some features we are planning to add in upcoming versions:
