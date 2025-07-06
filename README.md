@@ -74,6 +74,13 @@ cd frontend
 npm install
 npm run dev
 ```
+Screenshots
+
+![Homepage](images/homepage.png)
+![Login Page](images/LoginPage.png)
+![Student Dashboard](images/StudentDshboard.png)
+![Lost and Found](images/lost&found.png)
+![Support Admin Dashboard](images/SupportAdminDashboard.png)
 
 Future Plans
 Here are some features we are planning to add in upcoming versions:
