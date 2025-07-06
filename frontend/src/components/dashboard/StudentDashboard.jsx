@@ -227,7 +227,7 @@ if (activeTab === "complaints") {
       if (!token) throw new Error("Authentication required");
 
       const response = await axios.get(
-        `${API_URL}/student/profile`,
+        `${API_URL}/api/student/profile`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
