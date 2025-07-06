@@ -369,9 +369,9 @@ app.post('/loginSupportAdmin', async (req, res) => {
 // Student Profile (with hostel name)
 import Hostel from './models/Hostel.js';
 
-app.get('/student/profile', verifyToken, async (req, res) => {
+app.get('/api/student/profile', verifyToken, async (req, res) => {
     try {
-        const roll_no = req.roll_no;
+        const roll_no = req.user?.roll_no;
         console.log('Fetching profile for:', roll_no);
 
         const student = await Student.findOne({ roll_no });
