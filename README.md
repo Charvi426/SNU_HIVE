@@ -1,6 +1,8 @@
 SNU Hive – Hostel Management System for Shiv Nadar University
 
-SNU Hive is a full-stack web application designed to streamline hostel management and support services at **Shiv Nadar University**. It allows students, wardens, and support staff to interact on a single platform for improved efficiency and communication.
+SNU Hive is a full-stack web application designed to streamline hostel management and support services at Shiv Nadar University. It brings together students, wardens, and support staff onto a single platform to improve efficiency and communication—eliminating the need for outdated systems like excessive emails and WhatsApp forwards.
+
+Live Demo - https://snu-hivefrontend.onrender.com/
 
 User Roles
 
@@ -72,3 +74,15 @@ cd frontend
 npm install
 npm run dev
 ```
+
+Future Plans
+Here are some features we are planning to add in upcoming versions:
+
+🔐 Forgot Password Feature:
+To help users securely reset their passwords.
+
+🔔 Notifications:
+Real-time alerts for status updates, approvals, and more.
+
+🧺 Washing Machine Slot Booking:
+Students will be able to book slots to use washing machines in their hostels.
