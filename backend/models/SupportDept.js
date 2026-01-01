@@ -10,7 +10,9 @@ const SupportDeptSchema = new mongoose.Schema({
   warden_id: { type: String, ref: 'Warden', default: null },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  staff_capacity: { type: Number, required: true }
+  staff_capacity: { type: Number, required: true },
+  googleId: { type: String },
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' }
 });
 
 export default mongoose.model('SupportDept', SupportDeptSchema);

@@ -4,6 +4,7 @@ import axios from 'axios';
 import StudentFields from './StudentFields';
 import SupportFields from './SupportFields';
 import WardenFields from './WardenFields';
+import GoogleAuthButton from "../GoogleAuthButton";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -312,6 +313,16 @@ return (
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div className="mb-4">
+            <GoogleAuthButton />
+            </div>
+
+            <div className="flex items-center my-4">
+              <div className="flex-grow h-px bg-gray-300"></div>
+              <span className="px-2 text-sm text-gray-400">OR</span>
+              <div className="flex-grow h-px bg-gray-300"></div>
             </div>
 
             <div>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Image from "react-bootstrap/Image";
 import "bootstrap/dist/css/bootstrap.min.css";
+import GoogleAuthButton from "../GoogleAuthButton";
 
 const LoginForm = ({ userType }) => {
   const navigate = useNavigate();
@@ -196,6 +197,15 @@ const LoginForm = ({ userType }) => {
                 >
                   {isLoading ? "Signing in..." : "Sign in"}
                 </button>
+
+                <div className="flex items-center my-4">
+                  <div className="flex-grow h-px bg-gray-300"></div>
+                  <span className="px-2 text-sm text-gray-400">OR</span>
+                  <div className="flex-grow h-px bg-gray-300"></div>
+                </div>
+
+              <GoogleAuthButton />
+
               </form>
             </div>
           </div>

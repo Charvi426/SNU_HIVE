@@ -11,6 +11,7 @@ import Footer from './components/layout/footer';
 import SupportDashboard from './components/dashboard/SupportDashboard';
 import WardenDashboard from './components/dashboard/WardenDashboard';
 import LostFoundGrid from './pages/lostAndFound';
+import OAuthSuccess from './pages/OAuthSuccess';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           <Route path="/dashboard/warden" element={<WardenDashboard />} />
           <Route path="/dashboard/support" element={<SupportDashboard />} />
           <Route path="/lost-found" element={<LostFoundGrid />} />
+          <Route path="/oauth-success" element={<OAuthSuccess />} />
         </Routes>
       </div>
       <Footer />

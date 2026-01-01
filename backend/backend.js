@@ -18,16 +18,21 @@ import Warden from './models/Warden.js';
 import SupportDept from './models/SupportDept.js';
 import Student from './models/Student.js';
 
+dotenv.config();
+
+import "./middleware/passport.js";
+import passport from "passport";
+
 import { mkdirSync } from 'fs';
 await db();
 
 const app = express();
+
+app.use(passport.initialize());
 const jwtSecret = "zxcvasdfgtrewqyhbvcxzfdsahfs";
 
 const __filename = fileURLToPath(import.meta.url);       
 const __dirname = dirname(__filename);
-
-dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const allowedOrigins = ['https://snu-hivefrontend.onrender.com'];
 
@@ -53,8 +58,35 @@ app.use((req, res, next) => {
     next();
 });
 
+app.get("/auth/ping", (req, res) => {
+  res.send("AUTH ROUTES LIVE");
+});
+
+app.get(
+  "/auth/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+  })
+);
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { session: false }),
+  (req, res) => {
+    const token = jwt.sign(
+      { id: req.user._id, role: "student" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.redirect(
+      `${process.env.FRONTEND_URL}/oauth-success?token=${token}&role=student`
+    );
+  }
+);
+
 app.use('/api',foodrequestRoutes);
-app.use('/', complaintRoutes);
+app.use('/api/complaints', complaintRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api', lostFoundRoutes);
 app.get('/test', (req, res) => {
@@ -402,8 +434,6 @@ app.get('/api/student/profile', verifyToken, async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch profile', error: err.message });
     }
 });
-
-app.use(complaintRoutes); 
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
