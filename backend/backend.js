@@ -41,10 +41,16 @@ const jwtSecret = "zxcvasdfgtrewqyhbvcxzfdsahfs";
 const __filename = fileURLToPath(import.meta.url);       
 const __dirname = dirname(__filename);
 
-const allowedOrigins = ['https://snu-hivefrontend.onrender.com'];
+const allowedOrigins = [
+  'https://snu-hivefrontend.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, or server-to-server)
+    // Also allow Google OAuth redirects
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -69,6 +75,15 @@ app.get("/auth/ping", (req, res) => {
   res.send("AUTH ROUTES LIVE");
 });
 
+app.get("/auth/debug", (req, res) => {
+  res.json({
+    googleConfigured: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+    frontendUrl: process.env.FRONTEND_URL,
+    jwtConfigured: !!process.env.JWT_SECRET
+  });
+});
+
 app.get(
   "/auth/google",
   passport.authenticate("google", {
@@ -78,17 +93,34 @@ app.get(
 
 app.get(
   "/auth/google/callback",
-  passport.authenticate("google", { session: false }),
-  (req, res) => {
-    const token = jwt.sign(
-      { id: req.user._id, role: "student" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+  (req, res, next) => {
+    passport.authenticate("google", { session: false }, (err, user, info) => {
+      if (err) {
+        console.error("Google OAuth Error:", err);
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/login/student?error=${encodeURIComponent("Authentication failed")}`
+        );
+      }
 
-    res.redirect(
-      `${process.env.FRONTEND_URL}/oauth-success?token=${token}&role=student`
-    );
+      if (!user) {
+        console.log("Google OAuth: No user found", info);
+        // User not registered yet - redirect to completion page
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/oauth-success?status=new&message=${encodeURIComponent(info?.message || "Please complete your profile")}`
+        );
+      }
+
+      // User exists - create token and redirect
+      const token = jwt.sign(
+        { roll_no: user.roll_no, role: "student" },
+        jwtSecret,
+        { expiresIn: "1d" }
+      );
+
+      res.redirect(
+        `${process.env.FRONTEND_URL}/oauth-success?token=${token}&role=student`
+      );
+    })(req, res, next);
   }
 );
 
