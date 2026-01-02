@@ -1,3 +1,5 @@
+console.log("🔥🔥🔥 THIS IS BACKEND.JS FROM /backend FOLDER 🔥🔥🔥");
+
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
@@ -27,6 +29,11 @@ import { mkdirSync } from 'fs';
 await db();
 
 const app = express();
+
+app.get("/", (req, res) => {
+  res.send("ROOT BACKEND HIT");
+});
+
 
 app.use(passport.initialize());
 const jwtSecret = "zxcvasdfgtrewqyhbvcxzfdsahfs";
