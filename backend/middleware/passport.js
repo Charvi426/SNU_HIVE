@@ -22,18 +22,15 @@ passport.use(
         const email = profile.emails?.[0]?.value?.toLowerCase();
 
         if (!email || !email.endsWith("@snu.edu.in")) {
-          return done(null, false);
+          return done(null, false, { message: "SNU email required" });
         }
 
-        let user = await Student.findOne({ snu_email_id: email });
+        const user = await Student.findOne({ snu_email_id: email });
 
         if (!user) {
-          user = await Student.create({
-            s_name: profile.displayName,
-            snu_email_id: email,
-            googleId: profile.id,
-            authProvider: "google",
-          });
+          // Do NOT auto-create: Student schema needs many required fields.
+          // Frontend should route the user to a completion screen to finish signup.
+          return done(null, false, { message: "User not found. Complete signup." });
         }
 
         return done(null, user);
