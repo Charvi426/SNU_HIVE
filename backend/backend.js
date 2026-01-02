@@ -63,14 +63,14 @@ app.get("/auth/ping", (req, res) => {
 });
 
 app.get(
-  "/auth/google",
+  "/api/auth/google",
   passport.authenticate("google", {
     scope: ["profile", "email"],
   })
 );
 
 app.get(
-  "/auth/google/callback",
+  "/api/auth/google/callback",
   passport.authenticate("google", { session: false }),
   (req, res) => {
     const token = jwt.sign(
