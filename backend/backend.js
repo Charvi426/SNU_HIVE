@@ -86,9 +86,17 @@ app.get("/auth/debug", (req, res) => {
 
 app.get(
   "/auth/google",
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-  })
+  (req, res, next) => {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(500).json({ 
+        error: "Google OAuth not configured",
+        message: "Google authentication is not available. Please contact administrator."
+      });
+    }
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+    })(req, res, next);
+  }
 );
 
 app.get(

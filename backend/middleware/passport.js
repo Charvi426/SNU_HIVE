@@ -10,36 +10,40 @@ console.log("🧪 GOOGLE STRATEGY ENV CHECK:", {
   GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
 });
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL, // ✅ MUST be absolute
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        const email = profile.emails?.[0]?.value?.toLowerCase();
+// Only initialize Google Strategy if credentials are available
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          const email = profile.emails?.[0]?.value?.toLowerCase();
 
-        if (!email || !email.endsWith("@snu.edu.in")) {
-          return done(null, false, { message: "SNU email required" });
+          if (!email || !email.endsWith("@snu.edu.in")) {
+            return done(null, false, { message: "SNU email required" });
+          }
+
+          const user = await Student.findOne({ snu_email_id: email });
+
+          if (!user) {
+            return done(null, false, { message: "User not found. Complete signup." });
+          }
+
+          return done(null, user);
+        } catch (err) {
+          console.error("GOOGLE STRATEGY ERROR:", err);
+          return done(err);
         }
-
-        const user = await Student.findOne({ snu_email_id: email });
-
-        if (!user) {
-          // Do NOT auto-create: Student schema needs many required fields.
-          // Frontend should route the user to a completion screen to finish signup.
-          return done(null, false, { message: "User not found. Complete signup." });
-        }
-
-        return done(null, user);
-      } catch (err) {
-        console.error("GOOGLE STRATEGY ERROR:", err);
-        return done(err);
       }
-    }
-  )
-);
+    )
+  );
+  console.log("✅ Google OAuth Strategy initialized successfully");
+} else {
+  console.error("❌ Google OAuth credentials missing - Google auth will not work");
+}
 
 export default passport;
