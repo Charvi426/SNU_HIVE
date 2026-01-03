@@ -202,7 +202,7 @@ const SignupForm = ({ userType }) => {
           localStorage.setItem('userType', userType);
           localStorage.setItem('userData', JSON.stringify(loginResponse.data.userData));
           
-          navigate(`/${userType}/dashboard`);
+          navigate(`/dashboard/${userType}`);
         } else {
           navigate(`/login/${userType}`);
         }

@@ -12,7 +12,7 @@ const OAuthSuccess = () => {
     if (token && role) {
       localStorage.setItem("token", token);
       localStorage.setItem("userType", role);
-      navigate(`/${role}/dashboard`);
+      navigate(`/dashboard/${role}`);
     } else {
       navigate("/login/student");
     }
