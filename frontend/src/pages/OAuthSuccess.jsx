@@ -30,6 +30,7 @@ const OAuthSuccess = () => {
       // Existing user - login
       localStorage.setItem("token", token);
       localStorage.setItem("userType", role);
+      localStorage.setItem("lastLogin", Date.now().toString());
       navigate(`/dashboard/${role}`);
     } else if (newStatus === "new") {
       // New user - show completion form
@@ -79,6 +80,7 @@ const OAuthSuccess = () => {
       if (response.data.success) {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("userType", response.data.role);
+        localStorage.setItem("lastLogin", Date.now().toString());
         navigate("/dashboard/student");
       }
     } catch (err) {

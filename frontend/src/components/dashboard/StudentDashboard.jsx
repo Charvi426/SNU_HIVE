@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("complaints");
   const [complaints, setComplaints] = useState([]);
   const [foodRequests, setFoodRequests] = useState([]);
@@ -220,6 +221,15 @@ if (activeTab === "complaints") {
 
     initializeDashboard();
   }, [navigate, activeTab]);
+
+  // Sync tab from URL (?section=complaints|food|lostfound|profile)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const section = params.get("section");
+    if (section && ["complaints", "food", "lostfound", "profile"].includes(section)) {
+      setActiveTab(section);
+    }
+  }, [location.search]);
 
   const fetchProfile = async () => {
     try {

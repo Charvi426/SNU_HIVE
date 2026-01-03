@@ -80,6 +80,7 @@ const LoginForm = ({ userType }) => {
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("userType", userType);
       localStorage.setItem("email", requestData.email);
+      localStorage.setItem("lastLogin", Date.now().toString());
 
       if (response.data.warden_id) {
         localStorage.setItem("warden_id", response.data.warden_id);

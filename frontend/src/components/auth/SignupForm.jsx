@@ -201,6 +201,7 @@ const SignupForm = ({ userType }) => {
           localStorage.setItem('token', loginResponse.data.token);
           localStorage.setItem('userType', userType);
           localStorage.setItem('userData', JSON.stringify(loginResponse.data.userData));
+          localStorage.setItem('lastLogin', Date.now().toString());
           
           navigate(`/dashboard/${userType}`);
         } else {
