@@ -102,7 +102,7 @@ app.get(
 app.get(
   "/auth/google/callback",
   (req, res, next) => {
-    passport.authenticate("google", { session: false }, (err, user, info) => {
+    passport.authenticate("google", { session: false }, async (err, user, info) => {
       if (err) {
         console.error("Google OAuth Error:", err);
         return res.redirect(
@@ -112,9 +112,14 @@ app.get(
 
       if (!user) {
         console.log("Google OAuth: No user found", info);
-        // User not registered yet - redirect to completion page
+        // Extract email and name from Google profile
+        const email = req.user?.emails?.[0]?.value?.toLowerCase() || "";
+        const name = req.user?.displayName || "";
+        const googleId = req.user?.id || "";
+        
+        // User not registered yet - redirect to profile completion page
         return res.redirect(
-          `${process.env.FRONTEND_URL}/oauth-success?status=new&message=${encodeURIComponent(info?.message || "Please complete your profile")}`
+          `${process.env.FRONTEND_URL}/oauth-success?status=new&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&googleId=${encodeURIComponent(googleId)}`
         );
       }
 
@@ -447,6 +452,93 @@ app.post('/loginSupportAdmin', async (req, res) => {
 
 // Student Profile (with hostel name)
 import Hostel from './models/Hostel.js';
+
+// Complete Google signup - create student with remaining fields
+app.post('/auth/google/complete-signup', async (req, res) => {
+  try {
+    const { 
+      email, 
+      name, 
+      googleId,
+      roll_no,
+      dept,
+      batch,
+      contact_no,
+      room_no,
+      hostel_id,
+      parent_contact
+    } = req.body;
+
+    // Validate required fields
+    if (!email || !roll_no || !dept || !batch || !contact_no || !room_no || !hostel_id || !parent_contact) {
+      return res.status(400).json({ 
+        message: 'All fields are required' 
+      });
+    }
+
+    // Check if email already exists
+    const existingEmail = await Student.findOne({ snu_email_id: email });
+    if (existingEmail) {
+      return res.status(400).json({ 
+        message: 'This email is already registered' 
+      });
+    }
+
+    // Check hostel existence and capacity
+    const hostel = await Hostel.findOne({ hostel_id });
+    if (!hostel) {
+      return res.status(400).json({ 
+        message: 'This hostel does not exist' 
+      });
+    }
+
+    const current_occupancy = await Student.countDocuments({ hostel_id });
+    if (current_occupancy >= hostel.capacity) {
+      return res.status(400).json({ 
+        message: 'This hostel is full' 
+      });
+    }
+
+    // Create student with Google auth
+    const student = new Student({
+      roll_no,
+      s_name: name,
+      dept,
+      batch: parseInt(batch),
+      contact_no,
+      snu_email_id: email.toLowerCase(),
+      password: 'GOOGLE_AUTH_NO_PASSWORD', // Placeholder - not used for Google auth
+      room_no,
+      hostel_id,
+      parent_contact,
+      googleId,
+      authProvider: 'google'
+    });
+
+    await student.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { roll_no: student.roll_no, role: "student" },
+      jwtSecret,
+      { expiresIn: "1d" }
+    );
+
+    res.json({
+      success: true,
+      message: 'Account created successfully',
+      token,
+      role: 'student'
+    });
+
+  } catch (error) {
+    console.error('Google signup completion error:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
 
 app.get('/api/student/profile', verifyToken, async (req, res) => {
     try {
