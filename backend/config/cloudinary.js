@@ -1,5 +1,4 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
 
 // Configure Cloudinary
@@ -11,14 +10,9 @@ cloudinary.config({
 
 console.log('Cloudinary configured with cloud_name:', process.env.CLOUDINARY_CLOUD_NAME);
 
-// Configure Cloudinary storage for multer
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'snuhive',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif']
-  }
-});
+// Use memory storage instead of Cloudinary storage
+// We'll upload to Cloudinary manually in the route handler
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,

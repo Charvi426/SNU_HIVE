@@ -3,7 +3,7 @@ import Complaint from './models/Complaint.js';
 import Student from './models/Student.js';
 import verifyToken from './middleware/verifyToken.js';
 import verifyAdminToken from './middleware/verifyAdminToken.js';
-import { upload } from './config/cloudinary.js';
+import { upload, cloudinary } from './config/cloudinary.js';
 const router = express.Router();
 
 // Log all requests to this router
@@ -38,9 +38,18 @@ router.post('/complaint', verifyToken, (req, res, next) => {
   // Wrap upload middleware with error handling
   upload.single('image')(req, res, (err) => {
     if (err) {
-      console.error('Upload error:', err);
-      return res.status(400).json({ message: 'File upload failed', error: err.message });
+      console.error('Upload middleware error:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
+      return res.status(400).json({ 
+        message: 'File upload failed', 
+        error: err.message,
+        details: err.toString()
+      });
     }
+    console.log('Upload middleware succeeded, file:', req.file ? 'received' : 'no file');
     next();
   });
 }, async (req, res) => {
@@ -54,19 +63,33 @@ router.post('/complaint', verifyToken, (req, res, next) => {
   const complaint_id = `C${Date.now()}`;
   const complaint_date = new Date();
   
-  // Cloudinary returns file in req.file.path
+  // Upload file to Cloudinary if present
   let image_path = null;
   if (req.file) {
-    image_path = req.file.path || req.file.secure_url;
-    console.log('Successfully uploaded to Cloudinary:', {
-      filename: req.file.filename,
-      path: req.file.path,
-      secure_url: req.file.secure_url,
-      url: req.file.url,
-      all_keys: Object.keys(req.file)
-    });
-  } else {
-    console.log('No file in request');
+    try {
+      // Convert buffer to base64 for Cloudinary upload
+      const b64 = Buffer.from(req.file.buffer).toString('base64');
+      const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+      
+      // Upload to Cloudinary
+      const result = await cloudinary.uploader.upload(dataURI, {
+        folder: 'snuhive/complaints',
+        resource_type: 'auto'
+      });
+      
+      image_path = result.secure_url;
+      console.log('File uploaded to Cloudinary successfully:', {
+        filename: req.file.originalname,
+        url: image_path,
+        publicId: result.public_id
+      });
+    } catch (uploadErr) {
+      console.error('Cloudinary upload error:', uploadErr);
+      return res.status(400).json({ 
+        message: 'Failed to upload image to Cloudinary',
+        error: uploadErr.message
+      });
+    }
   }
 
   try {
