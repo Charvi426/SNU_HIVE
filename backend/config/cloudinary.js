@@ -9,26 +9,20 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+console.log('Cloudinary configured with cloud_name:', process.env.CLOUDINARY_CLOUD_NAME);
+
 // Configure Cloudinary storage for multer
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'snuhive',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif']
   }
 });
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-    if (allowedMimes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, and GIF are allowed.'));
-    }
-  }
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
 export { cloudinary, upload };

@@ -6,6 +6,22 @@ import verifyAdminToken from './middleware/verifyAdminToken.js';
 import { upload } from './config/cloudinary.js';
 const router = express.Router();
 
+// Log all requests to this router
+router.use((req, res, next) => {
+    console.log('Complaint route accessed:', {
+        method: req.method,
+        path: req.path,
+        url: req.url,
+        originalUrl: req.originalUrl
+    });
+    next();
+});
+
+// Test route to verify router is loaded
+router.get('/complaint-test', (req, res) => {
+    res.json({ message: 'Complaint router is loaded and working!' });
+});
+
 // Helper function to validate image URLs
 const getImageUrl = (image_path) => {
     if (!image_path) return null;
