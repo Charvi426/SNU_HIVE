@@ -76,7 +76,16 @@ router.get('/lostfound/status/:status', async (req, res) => {
 });
 
 // POST report a lost/found item
-router.post('/lostfound', verifyToken, upload.single('image'), async (req, res) => {
+router.post('/lostfound', verifyToken, (req, res, next) => {
+    // Wrap upload middleware with error handling
+    upload.single('image')(req, res, (err) => {
+        if (err) {
+            console.error('Upload error:', err);
+            return res.status(400).json({ message: 'File upload failed', error: err.message });
+        }
+        next();
+    });
+}, async (req, res) => {
     try {
         const { item_name, found_location, status, phone_number } = req.body;
 
@@ -95,18 +104,19 @@ router.post('/lostfound', verifyToken, upload.single('image'), async (req, res) 
         const item_id = uuidv4().substring(0, 10);
         const report_date = new Date();
         
-        // Cloudinary upload returns URL
+        // Cloudinary returns file in req.file.path
         let image_path = null;
         if (req.file) {
-            image_path = req.file.secure_url || req.file.path;
-            console.log('File upload details:', {
+            image_path = req.file.path || req.file.secure_url;
+            console.log('Successfully uploaded to Cloudinary:', {
                 filename: req.file.filename,
                 path: req.file.path,
                 secure_url: req.file.secure_url,
-                all_properties: Object.keys(req.file)
+                url: req.file.url,
+                all_keys: Object.keys(req.file)
             });
         } else {
-            console.log('No file received in upload');
+            console.log('No file in request');
         }
 
         const lostFound = new LostAndFound({

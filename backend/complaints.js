@@ -18,7 +18,16 @@ const getImageUrl = (image_path) => {
 };
 
 // POST: Create a complaint
-router.post('/complaint', verifyToken, upload.single('image'), async (req, res) => {
+router.post('/complaint', verifyToken, (req, res, next) => {
+  // Wrap upload middleware with error handling
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      console.error('Upload error:', err);
+      return res.status(400).json({ message: 'File upload failed', error: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
   const { description, hostel_id, d_name } = req.body;
   const roll_no = req.user?.roll_no;
 
@@ -29,18 +38,19 @@ router.post('/complaint', verifyToken, upload.single('image'), async (req, res) 
   const complaint_id = `C${Date.now()}`;
   const complaint_date = new Date();
   
-  // Cloudinary upload returns URL
+  // Cloudinary returns file in req.file.path
   let image_path = null;
   if (req.file) {
-    image_path = req.file.secure_url || req.file.path;
-    console.log('File upload details:', {
+    image_path = req.file.path || req.file.secure_url;
+    console.log('Successfully uploaded to Cloudinary:', {
       filename: req.file.filename,
       path: req.file.path,
       secure_url: req.file.secure_url,
-      all_properties: Object.keys(req.file)
+      url: req.file.url,
+      all_keys: Object.keys(req.file)
     });
   } else {
-    console.log('No file received in upload');
+    console.log('No file in request');
   }
 
   try {

@@ -9,25 +9,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Configure Cloudinary storage for multer - General purpose for both complaints and lost/found
+// Configure Cloudinary storage for multer
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: async (req, file) => {
-    // Determine folder based on the route/endpoint
-    let folder = 'snuhive/uploads';
-    
-    if (req.baseUrl.includes('lostfound') || req.path.includes('lostfound')) {
-      folder = 'snuhive/lostfound';
-    } else if (req.baseUrl.includes('complaint') || req.path.includes('complaint')) {
-      folder = 'snuhive/complaints';
-    }
-    
-    return {
-      folder: folder,
-      allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
-      transformation: [{ width: 800, height: 800, crop: 'limit' }],
-      resource_type: 'auto'
-    };
+  params: {
+    folder: 'snuhive',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
   }
 });
 
