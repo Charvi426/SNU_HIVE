@@ -3,10 +3,11 @@ import Complaint from './models/Complaint.js';
 import Student from './models/Student.js';
 import verifyToken from './middleware/verifyToken.js';
 import verifyAdminToken from './middleware/verifyAdminToken.js';
+import { upload } from './config/cloudinary.js';
 const router = express.Router();
 
 // POST: Create a complaint
-router.post('/complaint', verifyToken, async (req, res) => {
+router.post('/complaint', verifyToken, upload.single('image'), async (req, res) => {
   const { description, hostel_id, d_name } = req.body;
   const roll_no = req.user?.roll_no;
 
@@ -16,6 +17,7 @@ router.post('/complaint', verifyToken, async (req, res) => {
 
   const complaint_id = `C${Date.now()}`;
   const complaint_date = new Date();
+  const image_path = req.file ? req.file.path : null;
 
   try {
     const complaint = new Complaint({
@@ -25,7 +27,8 @@ router.post('/complaint', verifyToken, async (req, res) => {
       d_name,
       status: 'Pending',
       complaint_date,
-      description
+      description,
+      image_path
     });
 
     await complaint.save();

@@ -1,34 +1,35 @@
 import express from 'express';
-import multer from 'multer';
-import { v4 as uuidv4 } from 'uuid';
-import path from 'path';
 import LostAndFound from './models/LostAndFound.js';
 import Student from './models/Student.js';
 import verifyToken from './middleware/verifyToken.js';
+import { upload } from './config/cloudinary.js';
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/lostfound/');
-    },
-    filename: function (req, file, cb) {
-        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
-    }
-});
+// GET all lost and found items
+router.get('/lostfound', async (req, res) => {
+    try {
+        const items = await LostAndFound.find().sort({ report_date: -1 });
+        // Get student names for each item
+        const rollNos = items.map(item => item.roll_no).filter(Boolean);
+        const students = await Student.find({ roll_no: { $in: rollNos } });
 
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
+        const itemsWithImageUrls = items.map(item => {
+            const student = students.find(s => s.roll_no === item.roll_no);
+            return {
+                ...item.toObject(),
+                s_name: student?.s_name,
+                image_path: item.image_path ? `https://snu-hive-backend.onrender.com/${item.image_path}` : null
+            };
+        });
 
-        if (extname && mimetype) {
-            return cb(null, true);
-        }
-        cb(new Error('Only .png, .jpg and .jpeg files are allowed!'));
+        res.json(itemsWithImageUrls);
+    } catch (error) {
+        console.error('Error fetching lost and found items:', error);
+        res.status(500).json({
+            message: 'Failed to fetch items',
+            error: error.message
+        });
     }
 });
 
@@ -45,7 +46,7 @@ router.get('/lostfound', async (req, res) => {
             return {
                 ...item.toObject(),
                 s_name: student?.s_name,
-                image_path: item.image_path ? `https://snu-hive-backend.onrender.com/${item.image_path}` : null
+                image_path: item.image_path // Cloudinary URL is already full URL
             };
         });
 
@@ -76,7 +77,7 @@ router.get('/lostfound/status/:status', async (req, res) => {
             return {
                 ...item.toObject(),
                 s_name: student?.s_name,
-                image_path: item.image_path ? `https://snu-hive-backend.onrender.com/${item.image_path}` : null
+                image_path: item.image_path // Cloudinary URL is already full URL
             };
         });
 
@@ -106,8 +107,10 @@ router.post('/lostfound', verifyToken, upload.single('image'), async (req, res) 
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
+        const { v4: uuidv4 } = await import('uuid');
         const item_id = uuidv4().substring(0, 10);
         const report_date = new Date();
+        // Cloudinary upload returns full URL in req.file.path
         const image_path = req.file ? req.file.path : null;
 
         const lostFound = new LostAndFound({

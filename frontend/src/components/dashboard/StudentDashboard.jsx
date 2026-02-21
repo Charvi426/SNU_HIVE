@@ -16,6 +16,7 @@ const StudentDashboard = () => {
     description: "",
     hostel_id: "",
     d_name: "",
+    image: null
   });
 
   const [newFoodRequest, setNewFoodRequest] = useState({
@@ -148,10 +149,18 @@ const handleLostFoundSubmit = async (e) => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication required");
 
-      await axios.post(`${API_URL}/complaint`, newComplaint, {
+      const formData = new FormData();
+      formData.append("description", newComplaint.description);
+      formData.append("hostel_id", newComplaint.hostel_id);
+      formData.append("d_name", newComplaint.d_name);
+      if (newComplaint.image) {
+        formData.append("image", newComplaint.image);
+      }
+
+      await axios.post(`${API_URL}/complaint`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          "Content-Type": "multipart/form-data",
         },
       });
 
@@ -159,6 +168,7 @@ const handleLostFoundSubmit = async (e) => {
         description: "",
         hostel_id: "",
         d_name: "",
+        image: null,
       });
       await fetchComplaints();
       setError("");
@@ -528,6 +538,23 @@ if (activeTab === "complaints") {
                     rows="4"
                   />
                 </div>
+                <div>
+                  <label className="block mb-2">Upload Image (Optional)</label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png"
+                    className="w-full p-2 border rounded"
+                    onChange={(e) =>
+                      setNewComplaint({
+                        ...newComplaint,
+                        image: e.target.files ? e.target.files[0] : null,
+                      })
+                    }
+                  />
+                  <p className="text-sm text-gray-600 mt-1">
+                    Supported formats: JPG, JPEG, PNG (Max 5MB)
+                  </p>
+                </div>
                 <button
                   type="submit"
                   className="bg-[#432818] text-white px-4 py-2 rounded hover:opacity-90 transition-opacity"
@@ -553,8 +580,15 @@ if (activeTab === "complaints") {
                       ID: {complaint.complaint_id}
                     </p>
                     <p className="mt-2">Department: {complaint.d_name}</p>
-                    <p className="mt-2">{complaint.description}</p>
-                    <p className="mt-2 text-sm opacity-75">
+                    <p className="mt-2">{complaint.description}</p>                    {complaint.image_path && (
+                      <div className="mt-4">
+                        <img
+                          src={complaint.image_path}
+                          alt="Complaint"
+                          className="max-w-xs rounded-lg shadow-md"
+                        />
+                      </div>
+                    )}                    <p className="mt-2 text-sm opacity-75">
                       Status: {complaint.status} | Filed on:{" "}
                       {new Date(complaint.complaint_date).toLocaleDateString()}
                     </p>

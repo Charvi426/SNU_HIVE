@@ -7,7 +7,8 @@ const ComplaintSchema = new mongoose.Schema({
   d_name: { type: String, required: true },
   status: { type: String, required: true },
   complaint_date: { type: Date, required: true },
-  description: { type: String, required: true, maxlength: 300 }
+  description: { type: String, required: true, maxlength: 300 },
+  image_path: { type: String, default: null }
 });
 
 export default mongoose.model('Complaint', ComplaintSchema);
