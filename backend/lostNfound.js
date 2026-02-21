@@ -6,6 +6,11 @@ import { upload, cloudinary } from './config/cloudinary.js';
 
 const router = express.Router();
 
+// Test route to verify router is loaded
+router.get('/lostfound-test', (req, res) => {
+    res.json({ message: 'Lost and Found router is loaded!' });
+});
+
 // Helper function to convert old file paths to Cloudinary URLs
 const getImageUrl = (image_path) => {
     if (!image_path) return null;
@@ -77,6 +82,15 @@ router.get('/lostfound/status/:status', async (req, res) => {
 
 // POST report a lost/found item
 router.post('/lostfound', verifyToken, upload.single('image'), async (req, res) => {
+    console.log('=== Lost and Found POST Handler Started ===');
+    console.log('Request received:', {
+        hasFile: !!req.file,
+        fileName: req.file?.originalname,
+        fileSize: req.file?.size,
+        contentType: req.headers['content-type'],
+        bodyKeys: Object.keys(req.body || {})
+    });
+    
     try {
         const { item_name, found_location, status, phone_number } = req.body;
 

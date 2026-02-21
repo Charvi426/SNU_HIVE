@@ -35,6 +35,15 @@ const getImageUrl = (image_path) => {
 
 // POST: Create a complaint
 router.post('/complaint', verifyToken, upload.single('image'), async (req, res) => {
+  console.log('=== Complaint POST Handler Started ===');
+  console.log('Request received:', {
+    hasFile: !!req.file,
+    fileName: req.file?.originalname,
+    fileSize: req.file?.size,
+    contentType: req.headers['content-type'],
+    bodyKeys: Object.keys(req.body || {})
+  });
+  
   const { description, hostel_id, d_name } = req.body;
   const roll_no = req.user?.roll_no;
 

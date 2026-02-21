@@ -142,6 +142,32 @@ app.use('/', complaintRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api', lostFoundRoutes);
 
+// Error handling middleware for multer and other errors
+app.use((err, req, res, next) => {
+    console.error('Middleware Error:', {
+        message: err.message,
+        code: err.code,
+        name: err.name,
+        url: req.url,
+        method: req.method
+    });
+    
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'File too large' });
+    }
+    if (err.code === 'LIMIT_PART_COUNT') {
+        return res.status(400).json({ message: 'Too many parts' });
+    }
+    if (err.code === 'LIMIT_FIELD_NAME_SIZE' || err.code === 'LIMIT_FIELD_SIZE') {
+        return res.status(400).json({ message: 'Field too large' });
+    }
+    
+    res.status(500).json({ 
+        message: 'Server error',
+        error: err.message
+    });
+});
+
 const uploadsDir = join(__dirname, 'uploads', 'lostfound');
 try {
     mkdirSync(uploadsDir, { recursive: true });
