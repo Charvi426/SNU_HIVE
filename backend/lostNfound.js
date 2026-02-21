@@ -19,33 +19,6 @@ router.get('/lostfound', async (req, res) => {
             return {
                 ...item.toObject(),
                 s_name: student?.s_name,
-                image_path: item.image_path ? `https://snu-hive-backend.onrender.com/${item.image_path}` : null
-            };
-        });
-
-        res.json(itemsWithImageUrls);
-    } catch (error) {
-        console.error('Error fetching lost and found items:', error);
-        res.status(500).json({
-            message: 'Failed to fetch items',
-            error: error.message
-        });
-    }
-});
-
-// GET all lost and found items
-router.get('/lostfound', async (req, res) => {
-    try {
-        const items = await LostAndFound.find().sort({ report_date: -1 });
-        // Get student names for each item
-        const rollNos = items.map(item => item.roll_no).filter(Boolean);
-        const students = await Student.find({ roll_no: { $in: rollNos } });
-
-        const itemsWithImageUrls = items.map(item => {
-            const student = students.find(s => s.roll_no === item.roll_no);
-            return {
-                ...item.toObject(),
-                s_name: student?.s_name,
                 image_path: item.image_path // Cloudinary URL is already full URL
             };
         });
@@ -112,6 +85,12 @@ router.post('/lostfound', verifyToken, upload.single('image'), async (req, res) 
         const report_date = new Date();
         // Cloudinary upload returns full URL in req.file.path
         const image_path = req.file ? req.file.path : null;
+        
+        console.log('Upload successful:', {
+            file: req.file ? 'File received' : 'No file',
+            image_path: image_path,
+            file_details: req.file
+        });
 
         const lostFound = new LostAndFound({
             item_id,

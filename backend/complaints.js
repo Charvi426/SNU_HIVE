@@ -20,6 +20,12 @@ router.post('/complaint', verifyToken, upload.single('image'), async (req, res) 
   const image_path = req.file ? req.file.path : null;
 
   try {
+    console.log('Complaint upload details:', {
+      file: req.file ? 'File received' : 'No file',
+      image_path: image_path,
+      file_details: req.file
+    });
+
     const complaint = new Complaint({
       complaint_id,
       roll_no,
