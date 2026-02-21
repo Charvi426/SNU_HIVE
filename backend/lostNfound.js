@@ -6,6 +6,17 @@ import { upload } from './config/cloudinary.js';
 
 const router = express.Router();
 
+// Helper function to convert old file paths to Cloudinary URLs
+const getImageUrl = (image_path) => {
+    if (!image_path) return null;
+    // If it's already a Cloudinary URL, return as is
+    if (image_path.startsWith('http')) {
+        return image_path;
+    }
+    // If it's just a filename, it's old data - return null since we can't serve it
+    return null;
+};
+
 // GET all lost and found items
 router.get('/lostfound', async (req, res) => {
     try {
@@ -19,7 +30,7 @@ router.get('/lostfound', async (req, res) => {
             return {
                 ...item.toObject(),
                 s_name: student?.s_name,
-                image_path: item.image_path // Cloudinary URL is already full URL
+                image_path: getImageUrl(item.image_path)
             };
         });
 
@@ -50,7 +61,7 @@ router.get('/lostfound/status/:status', async (req, res) => {
             return {
                 ...item.toObject(),
                 s_name: student?.s_name,
-                image_path: item.image_path // Cloudinary URL is already full URL
+                image_path: getImageUrl(item.image_path)
             };
         });
 

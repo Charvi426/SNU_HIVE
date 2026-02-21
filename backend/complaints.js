@@ -6,6 +6,17 @@ import verifyAdminToken from './middleware/verifyAdminToken.js';
 import { upload } from './config/cloudinary.js';
 const router = express.Router();
 
+// Helper function to validate image URLs
+const getImageUrl = (image_path) => {
+    if (!image_path) return null;
+    // If it's already a Cloudinary URL, return as is
+    if (image_path.startsWith('http')) {
+        return image_path;
+    }
+    // If it's just a filename, it's old data
+    return null;
+};
+
 // POST: Create a complaint
 router.post('/complaint', verifyToken, upload.single('image'), async (req, res) => {
   const { description, hostel_id, d_name } = req.body;
@@ -57,11 +68,19 @@ router.post('/complaint', verifyToken, upload.single('image'), async (req, res) 
 router.get('/complaint/student', verifyToken, async (req, res) => {
   const roll_no = req.user?.roll_no;
   try {
-    const complaints = await Complaint.find({ roll_no }).select('-_id -__v');
+    const complaints = await Complaint.find({ roll_no });
     if (!complaints.length) {
       return res.status(404).json({ message: "No complaints found for this roll number" });
     }
-    res.status(200).json(complaints);
+    
+    // Add processed image URLs to each complaint
+    const complaintsWithImages = complaints.map(c => {
+      const obj = c.toObject();
+      obj.image_path = getImageUrl(obj.image_path);
+      return obj;
+    });
+    
+    res.status(200).json(complaintsWithImages);
   } catch (err) {
     console.error("Error fetching complaints:", err);
     res.status(500).json({ message: "Failed to fetch complaints", error: err.message });
@@ -82,11 +101,13 @@ router.get('/department-complaints', verifyAdminToken, async (req, res) => {
 
     const complaintsWithStudent = complaints.map(c => {
       const student = students.find(s => s.roll_no === c.roll_no);
+      const obj = c.toObject();
       return {
-        ...c.toObject(),
+        ...obj,
         s_name: student?.s_name,
         hostel_id: student?.hostel_id,
-        room_no: student?.room_no
+        room_no: student?.room_no,
+        image_path: getImageUrl(obj.image_path)
       };
     });
 

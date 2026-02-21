@@ -138,7 +138,7 @@ app.get(
 );
 
 app.use('/api',foodrequestRoutes);
-app.use('/api/complaints', complaintRoutes);
+app.use('/', complaintRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api', lostFoundRoutes);
 app.get('/test', (req, res) => {
