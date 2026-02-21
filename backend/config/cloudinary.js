@@ -24,15 +24,24 @@ const storage = new CloudinaryStorage({
     
     return {
       folder: folder,
-      allowed_formats: ['jpg', 'jpeg', 'png'],
-      transformation: [{ width: 800, height: 800, crop: 'limit' }]
+      allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+      transformation: [{ width: 800, height: 800, crop: 'limit' }],
+      resource_type: 'auto'
     };
   }
 });
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit,
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, and GIF are allowed.'));
+    }
+  }
 });
 
 export { cloudinary, upload };

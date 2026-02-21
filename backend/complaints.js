@@ -17,7 +17,7 @@ router.post('/complaint', verifyToken, upload.single('image'), async (req, res) 
 
   const complaint_id = `C${Date.now()}`;
   const complaint_date = new Date();
-  const image_path = req.file ? req.file.path : null;
+  const image_path = req.file ? (req.file.secure_url || req.file.path) : null;
 
   try {
     console.log('Complaint upload details:', {
