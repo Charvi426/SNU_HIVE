@@ -138,12 +138,9 @@ app.get(
 );
 
 app.use('/api',foodrequestRoutes);
-app.use('/', complaintRoutes);
+app.use('', complaintRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api', lostFoundRoutes);
-app.get('/test', (req, res) => {
-    res.json({ message: 'Server is working' });
-});
 
 const uploadsDir = join(__dirname, 'uploads', 'lostfound');
 try {
@@ -572,6 +569,21 @@ app.get('/api/student/profile', verifyToken, async (req, res) => {
         console.error('Error fetching student profile:', err);
         res.status(500).json({ message: 'Failed to fetch profile', error: err.message });
     }
+});
+
+// 404 handler - catch all unmatched routes
+app.use((req, res) => {
+    console.error('404 - Route not found:', {
+        method: req.method,
+        url: req.url,
+        path: req.path,
+        originalUrl: req.originalUrl
+    });
+    res.status(404).json({ 
+        message: 'Route not found',
+        method: req.method,
+        url: req.url
+    });
 });
 
 const PORT = process.env.PORT;
