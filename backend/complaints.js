@@ -17,14 +17,22 @@ router.post('/complaint', verifyToken, upload.single('image'), async (req, res) 
 
   const complaint_id = `C${Date.now()}`;
   const complaint_date = new Date();
-  const image_path = req.file ? (req.file.secure_url || req.file.path) : null;
+  
+  // Cloudinary upload returns URL
+  let image_path = null;
+  if (req.file) {
+    image_path = req.file.secure_url || req.file.path;
+    console.log('File upload details:', {
+      filename: req.file.filename,
+      path: req.file.path,
+      secure_url: req.file.secure_url,
+      all_properties: Object.keys(req.file)
+    });
+  } else {
+    console.log('No file received in upload');
+  }
 
   try {
-    console.log('Complaint upload details:', {
-      file: req.file ? 'File received' : 'No file',
-      image_path: image_path,
-      file_details: req.file
-    });
 
     const complaint = new Complaint({
       complaint_id,

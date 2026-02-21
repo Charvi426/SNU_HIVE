@@ -84,14 +84,19 @@ router.post('/lostfound', verifyToken, upload.single('image'), async (req, res) 
         const item_id = uuidv4().substring(0, 10);
         const report_date = new Date();
         
-        // Cloudinary upload returns full URL in req.file.secure_url or req.file.path
-        const image_path = req.file ? (req.file.secure_url || req.file.path) : null;
-        
-        console.log('Upload successful:', {
-            file: req.file ? 'File received' : 'No file',
-            image_path: image_path,
-            file_details: req.file
-        });
+        // Cloudinary upload returns URL
+        let image_path = null;
+        if (req.file) {
+            image_path = req.file.secure_url || req.file.path;
+            console.log('File upload details:', {
+                filename: req.file.filename,
+                path: req.file.path,
+                secure_url: req.file.secure_url,
+                all_properties: Object.keys(req.file)
+            });
+        } else {
+            console.log('No file received in upload');
+        }
 
         const lostFound = new LostAndFound({
             item_id,
