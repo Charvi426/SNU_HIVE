@@ -34,25 +34,7 @@ const getImageUrl = (image_path) => {
 };
 
 // POST: Create a complaint
-router.post('/complaint', verifyToken, (req, res, next) => {
-  // Wrap upload middleware with error handling
-  upload.single('image')(req, res, (err) => {
-    if (err) {
-      console.error('Upload middleware error:', {
-        message: err.message,
-        stack: err.stack,
-        name: err.name
-      });
-      return res.status(400).json({ 
-        message: 'File upload failed', 
-        error: err.message,
-        details: err.toString()
-      });
-    }
-    console.log('Upload middleware succeeded, file:', req.file ? 'received' : 'no file');
-    next();
-  });
-}, async (req, res) => {
+router.post('/complaint', verifyToken, upload.single('image'), async (req, res) => {
   const { description, hostel_id, d_name } = req.body;
   const roll_no = req.user?.roll_no;
 

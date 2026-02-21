@@ -76,36 +76,12 @@ router.get('/lostfound/status/:status', async (req, res) => {
 });
 
 // POST report a lost/found item
-router.post('/lostfound', verifyToken, (req, res, next) => {
-    console.log('Lost and Found POST request received:', {
-        hasImage: !!req.files || !!req.file,
-        contentType: req.headers['content-type'],
-        bodyKeys: Object.keys(req.body)
-    });
-    
-    // Wrap upload middleware with error handling
-    upload.single('image')(req, res, (err) => {
-        if (err) {
-            console.error('Upload middleware error:', {
-                message: err.message,
-                stack: err.stack,
-                name: err.name
-            });
-            return res.status(400).json({ 
-                message: 'File upload failed', 
-                error: err.message,
-                details: err.toString()
-            });
-        }
-        console.log('Upload middleware succeeded, file:', req.file ? 'received' : 'no file');
-        next();
-    });
-}, async (req, res) => {
+router.post('/lostfound', verifyToken, upload.single('image'), async (req, res) => {
     try {
         const { item_name, found_location, status, phone_number } = req.body;
 
-        // Use req.user or req.body for roll_no depending on your auth middleware
-        const roll_no = req.user?.roll_no || req.body.roll_no;
+        // Use req.user for roll_no from token
+        const roll_no = req.user?.roll_no;
         if (!roll_no) {
             return res.status(401).json({ message: 'User authentication failed' });
         }
