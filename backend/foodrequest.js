@@ -5,6 +5,7 @@ import Hostel from './models/Hostel.js';
 import verifyToken from './middleware/verifyToken.js';
 import verifyWardenToken from './middleware/verifyWardenToken.js';
 import Student from './models/Student.js';
+import { upload, cloudinary } from './config/cloudinary.js';
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ router.get('/test', (req, res) => {
 });
 
 // Create food request
-router.post('/foodrequest', verifyToken, [
+router.post('/foodrequest', verifyToken, upload.single('prescription'), [
     body('food_id')
         .matches(/^\d{4}$/)
         .withMessage('Food ID must be exactly 4 digits'),
@@ -32,23 +33,34 @@ router.post('/foodrequest', verifyToken, [
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
-        console.log('Validation errors:', errors.array()); 
+        console.log('Validation errors:', errors.array());
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
 
+        if (!req.file) {
+            return res.status(400).json({ message: 'Prescription image or PDF is required' });
+        }
+
         const { food_id, type, date } = req.body;
-        const roll_no = req.user?.roll_no; 
+        const roll_no = req.user?.roll_no;
 
 console.log('Food request body:', req.body);
 console.log('Roll no from token:', roll_no);
 
         const student = await Student.findOne({ roll_no });
-        
+
 console.log('Student found:', student);
         if (!student?.hostel_id) {
             return res.status(400).json({ message: 'Student not assigned to any hostel' });
         }
+
+        const b64 = Buffer.from(req.file.buffer).toString('base64');
+        const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+        const uploadResult = await cloudinary.uploader.upload(dataURI, {
+            folder: 'snuhive/prescriptions',
+            resource_type: 'auto'
+        });
 
         const foodRequest = new FoodRequest({
             food_id,
@@ -56,7 +68,8 @@ console.log('Student found:', student);
             hostel_id: student.hostel_id,
             type,
             date,
-            status: 'Pending'
+            status: 'Pending',
+            prescription_path: uploadResult.secure_url
         });
 
         await foodRequest.save();
@@ -67,7 +80,8 @@ console.log('Student found:', student);
                 food_id,
                 type,
                 date,
-                status: 'Pending'
+                status: 'Pending',
+                prescription_path: uploadResult.secure_url
             }
         });
     } catch (error) {
@@ -168,8 +182,9 @@ router.patch('/foodrequest/:food_id/status', verifyWardenToken, [
             return res.status(403).json({ message: 'Not authorized to update this food request' });
         }
 
-        foodRequest.status = status;
-        await foodRequest.save();
+        // Partial update (not .save()) so pre-existing requests without a
+        // prescription_path aren't blocked by that field's required validator.
+        await FoodRequest.updateOne({ food_id }, { $set: { status } });
 
         res.json({
             message: 'Food request status updated successfully',

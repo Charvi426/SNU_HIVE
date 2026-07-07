@@ -1,7 +1,5 @@
 import jwt from 'jsonwebtoken';
 
-const secretKey = "zxcvasdfgtrewqyhbvcxzfdsahfs"; 
-
 const verifyWardenToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -12,7 +10,7 @@ const verifyWardenToken = (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, secretKey);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check if this is a warden token by looking for warden_id
     if (!decoded.warden_id) {

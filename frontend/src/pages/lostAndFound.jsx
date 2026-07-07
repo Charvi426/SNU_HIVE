@@ -12,10 +12,11 @@ useEffect(() => {
     const fetchItems = async () => {
       setLoading(true);
       try {
-        let url = 'https://snu-hive-backend.onrender.com/api/lostfound';
-        
+        const API_URL = import.meta.env.VITE_API_URL;
+        let url = `${API_URL}/api/lostfound`;
+
         if (filter !== 'ALL') {
-          url = `https://snu-hive-backend.onrender.com/api/lostfound/status/${filter}`;
+          url = `${API_URL}/api/lostfound/status/${filter}`;
         }
 
         console.log('Fetching from URL:', url); // Debug log

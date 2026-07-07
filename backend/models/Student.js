@@ -7,12 +7,13 @@ const StudentSchema = new mongoose.Schema({
   batch: { type: Number, required: true },
   contact_no: { type: String, required: true, unique: true },
   snu_email_id: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  password: { type: String },
   room_no: { type: String, required: true },
   hostel_id: { type: String, ref: 'Hostel', default: null },
   parent_contact: { type: String, required: true },
   googleId: { type: String },
-  authProvider: { type: String, enum: ['local', 'google'], default: 'local' }
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+  isRegistered: { type: Boolean, default: false }
 });
 
 export default mongoose.model('Student', StudentSchema);

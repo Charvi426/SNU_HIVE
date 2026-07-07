@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
+import { loadGoogleMapsScript } from "../../utils/loadGoogleMaps";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ const StudentDashboard = () => {
     food_id: "",
     type: "",
     date: "",
+    prescription: null,
   });
 
 // Add after other useState declarations
@@ -34,6 +36,30 @@ const [newLostFound, setNewLostFound] = useState({
   phone_number: "",
   image: null
 });
+
+const [carpoolRides, setCarpoolRides] = useState([]);
+const [myCarpoolRides, setMyCarpoolRides] = useState([]);
+const [rideFilters, setRideFilters] = useState({ date: "", place: "", time: "" });
+const [newRide, setNewRide] = useState({
+  from_location: "",
+  from_place_id: null,
+  from_lat: null,
+  from_lng: null,
+  to_location: "",
+  to_place_id: null,
+  to_lat: null,
+  to_lng: null,
+  date: "",
+  time: "",
+  seats_total: "",
+});
+const fromInputRef = useRef(null);
+const toInputRef = useRef(null);
+
+const [openChatRideId, setOpenChatRideId] = useState(null);
+const [chatMessages, setChatMessages] = useState([]);
+const [newMessageText, setNewMessageText] = useState("");
+
 const API_URL = import.meta.env.VITE_API_URL;
 // Add after other fetch functions
 const fetchLostFoundItems = async () => {
@@ -52,6 +78,160 @@ const fetchLostFoundItems = async () => {
     setLostFoundItems(response.data);
   } catch (err) {
     console.error("Error fetching lost and found items:", err);
+  }
+};
+
+const fetchCarpoolRides = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication required");
+
+    const response = await axios.get(`${API_URL}/api/carpool`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setCarpoolRides(response.data);
+  } catch (err) {
+    console.error("Error fetching carpool rides:", err);
+  }
+};
+
+const fetchMyCarpoolRides = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication required");
+
+    const response = await axios.get(`${API_URL}/api/carpool/mine`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setMyCarpoolRides(response.data);
+  } catch (err) {
+    console.error("Error fetching my carpool rides:", err);
+  }
+};
+
+const handleCreateRide = async (e) => {
+  e.preventDefault();
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication required");
+
+    await axios.post(`${API_URL}/api/carpool`, newRide, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    setNewRide({
+      from_location: "", from_place_id: null, from_lat: null, from_lng: null,
+      to_location: "", to_place_id: null, to_lat: null, to_lng: null,
+      date: "", time: "", seats_total: "",
+    });
+    await fetchCarpoolRides();
+    await fetchMyCarpoolRides();
+    setError("");
+  } catch (err) {
+    console.error("Error posting carpool ride:", err);
+    setError(err.response?.data?.message || "Failed to post ride");
+  }
+};
+
+const handleJoinRide = async (ride_id) => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication required");
+
+    await axios.post(`${API_URL}/api/carpool/${ride_id}/join`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    await fetchCarpoolRides();
+    await fetchMyCarpoolRides();
+    setError("");
+  } catch (err) {
+    console.error("Error joining carpool ride:", err);
+    setError(err.response?.data?.message || "Failed to send join request");
+  }
+};
+
+const handleRespondToRequest = async (ride_id, roll_no, status) => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication required");
+
+    await axios.patch(`${API_URL}/api/carpool/${ride_id}/requests/${roll_no}`, { status }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    await fetchCarpoolRides();
+    await fetchMyCarpoolRides();
+    setError("");
+  } catch (err) {
+    console.error("Error responding to join request:", err);
+    setError(err.response?.data?.message || "Failed to update join request");
+  }
+};
+
+const handleCancelRide = async (ride_id) => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication required");
+
+    await axios.delete(`${API_URL}/api/carpool/${ride_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    await fetchCarpoolRides();
+    await fetchMyCarpoolRides();
+    setError("");
+  } catch (err) {
+    console.error("Error cancelling carpool ride:", err);
+    setError(err.response?.data?.message || "Failed to cancel ride");
+  }
+};
+
+const fetchChatMessages = async (ride_id) => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication required");
+
+    const response = await axios.get(`${API_URL}/api/carpool/${ride_id}/messages`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setChatMessages(response.data);
+  } catch (err) {
+    console.error("Error fetching chat messages:", err);
+  }
+};
+
+const handleSendMessage = async (e) => {
+  e.preventDefault();
+  if (!newMessageText.trim() || !openChatRideId) return;
+
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication required");
+
+    await axios.post(
+      `${API_URL}/api/carpool/${openChatRideId}/messages`,
+      { text: newMessageText },
+      { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+    );
+    setNewMessageText("");
+    await fetchChatMessages(openChatRideId);
+  } catch (err) {
+    console.error("Error sending chat message:", err);
+    setError(err.response?.data?.message || "Failed to send message");
+  }
+};
+
+const toggleChat = (ride_id) => {
+  if (openChatRideId === ride_id) {
+    setOpenChatRideId(null);
+    setChatMessages([]);
+  } else {
+    setOpenChatRideId(ride_id);
+    fetchChatMessages(ride_id);
   }
 };
 
@@ -183,19 +363,29 @@ const handleLostFoundSubmit = async (e) => {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication required");
+      if (!newFoodRequest.prescription) {
+        setError("Please attach a prescription image or PDF");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("food_id", newFoodRequest.food_id);
+      formData.append("type", newFoodRequest.type);
+      formData.append("date", newFoodRequest.date);
+      formData.append("prescription", newFoodRequest.prescription);
 
       await axios.post(
         `${API_URL}/api/foodrequest`,
-        newFoodRequest,
+        formData,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            "Content-Type": "multipart/form-data",
           },
         }
       );
 
-      setNewFoodRequest({ food_id: "", type: "", date: "" });
+      setNewFoodRequest({ food_id: "", type: "", date: "", prescription: null });
       await fetchFoodRequests();
     } catch (err) {
       console.error("Food request submission error:", err);
@@ -220,6 +410,9 @@ if (activeTab === "complaints") {
         await fetchFoodRequests();
       } else if (activeTab === "lostfound") {
         await fetchLostFoundItems();
+      } else if (activeTab === "carpool") {
+        await fetchCarpoolRides();
+        await fetchMyCarpoolRides();
       }
       } catch (err) {
         console.error("Dashboard initialization failed:", err);
@@ -236,10 +429,57 @@ if (activeTab === "complaints") {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const section = params.get("section");
-    if (section && ["complaints", "food", "lostfound", "profile"].includes(section)) {
+    if (section && ["complaints", "food", "lostfound", "carpool", "profile"].includes(section)) {
       setActiveTab(section);
     }
   }, [location.search]);
+
+  // Wire up Places Autocomplete on the From/To fields once the Carpool tab is showing
+  useEffect(() => {
+    if (activeTab !== "carpool") return;
+
+    let fromAutocomplete;
+    let toAutocomplete;
+
+    loadGoogleMapsScript()
+      .then((google) => {
+        if (fromInputRef.current) {
+          fromAutocomplete = new google.maps.places.Autocomplete(fromInputRef.current);
+          fromAutocomplete.addListener("place_changed", () => {
+            const place = fromAutocomplete.getPlace();
+            setNewRide((prev) => ({
+              ...prev,
+              from_location: place.formatted_address || place.name || prev.from_location,
+              from_place_id: place.place_id || null,
+              from_lat: place.geometry?.location?.lat() ?? null,
+              from_lng: place.geometry?.location?.lng() ?? null,
+            }));
+          });
+        }
+
+        if (toInputRef.current) {
+          toAutocomplete = new google.maps.places.Autocomplete(toInputRef.current);
+          toAutocomplete.addListener("place_changed", () => {
+            const place = toAutocomplete.getPlace();
+            setNewRide((prev) => ({
+              ...prev,
+              to_location: place.formatted_address || place.name || prev.to_location,
+              to_place_id: place.place_id || null,
+              to_lat: place.geometry?.location?.lat() ?? null,
+              to_lng: place.geometry?.location?.lng() ?? null,
+            }));
+          });
+        }
+      })
+      .catch((err) => console.error("Failed to load Google Maps:", err));
+
+    return () => {
+      if (window.google?.maps?.event) {
+        if (fromAutocomplete) window.google.maps.event.clearInstanceListeners(fromAutocomplete);
+        if (toAutocomplete) window.google.maps.event.clearInstanceListeners(toAutocomplete);
+      }
+    };
+  }, [activeTab]);
 
   const fetchProfile = async () => {
     try {
@@ -266,6 +506,34 @@ if (activeTab === "complaints") {
       fetchProfile();
     }
   }, [activeTab]);
+
+  // Poll the open chat thread for new messages every few seconds
+  useEffect(() => {
+    if (!openChatRideId) return;
+
+    const interval = setInterval(() => {
+      fetchChatMessages(openChatRideId);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [openChatRideId]);
+
+  const filteredCarpoolRides = carpoolRides.filter((ride) => {
+    if (rideFilters.date && new Date(ride.date).toISOString().split("T")[0] !== rideFilters.date) {
+      return false;
+    }
+    if (rideFilters.time && ride.time !== rideFilters.time) {
+      return false;
+    }
+    if (rideFilters.place) {
+      const term = rideFilters.place.toLowerCase();
+      const matches =
+        ride.from_location.toLowerCase().includes(term) ||
+        ride.to_location.toLowerCase().includes(term);
+      if (!matches) return false;
+    }
+    return true;
+  });
 
   if (loading) {
     return (
@@ -310,6 +578,17 @@ if (activeTab === "complaints") {
             }`}
           >
             Lost & Found
+          </button>
+
+          <button
+            onClick={() => setActiveTab("carpool")}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === "carpool"
+                ? "bg-[#432818] text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            Carpool
           </button>
 
           <button
@@ -460,6 +739,281 @@ if (activeTab === "complaints") {
             <p className="mt-2 text-sm opacity-75">
               Reported on: {new Date(item.report_date).toLocaleDateString()}
             </p>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
+
+{activeTab === "carpool" && (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h1 className="text-3xl font-bold text-gray-900">Carpool</h1>
+      <button
+        onClick={() => { fetchCarpoolRides(); fetchMyCarpoolRides(); }}
+        className="px-4 py-2 bg-[#432818] text-white rounded hover:opacity-90 transition-opacity"
+      >
+        Refresh
+      </button>
+    </div>
+
+    {/* Post a Ride */}
+    <div className="bg-white rounded-lg shadow p-6">
+      <h2 className="text-2xl font-bold mb-4">Post a Ride</h2>
+      <form onSubmit={handleCreateRide} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block mb-2">From</label>
+            <input
+              ref={fromInputRef}
+              type="text"
+              className="w-full p-2 border rounded"
+              value={newRide.from_location}
+              onChange={(e) => setNewRide({ ...newRide, from_location: e.target.value, from_place_id: null, from_lat: null, from_lng: null })}
+              required
+              placeholder="e.g. Campus Gate 2"
+            />
+          </div>
+          <div>
+            <label className="block mb-2">To</label>
+            <input
+              ref={toInputRef}
+              type="text"
+              className="w-full p-2 border rounded"
+              value={newRide.to_location}
+              onChange={(e) => setNewRide({ ...newRide, to_location: e.target.value, to_place_id: null, to_lat: null, to_lng: null })}
+              required
+              placeholder="e.g. IGI Airport"
+            />
+          </div>
+          <div>
+            <label className="block mb-2">Date</label>
+            <input
+              type="date"
+              className="w-full p-2 border rounded"
+              value={newRide.date}
+              onChange={(e) => setNewRide({ ...newRide, date: e.target.value })}
+              required
+              min={new Date().toISOString().split("T")[0]}
+            />
+          </div>
+          <div>
+            <label className="block mb-2">Time</label>
+            <input
+              type="time"
+              className="w-full p-2 border rounded"
+              value={newRide.time}
+              onChange={(e) => setNewRide({ ...newRide, time: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <label className="block mb-2">Seats available</label>
+            <input
+              type="number"
+              min="1"
+              className="w-full p-2 border rounded"
+              value={newRide.seats_total}
+              onChange={(e) => setNewRide({ ...newRide, seats_total: e.target.value })}
+              required
+            />
+          </div>
+        </div>
+        <button
+          type="submit"
+          className="bg-[#432818] text-white px-4 py-2 rounded hover:opacity-90 transition-opacity"
+        >
+          Post Ride
+        </button>
+      </form>
+    </div>
+
+    {/* My Rides */}
+    <div className="bg-white rounded-lg shadow p-6">
+      <h2 className="text-2xl font-bold mb-4">My Rides</h2>
+      {myCarpoolRides.length === 0 ? (
+        <p className="text-gray-500">You haven't posted or joined any rides yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {myCarpoolRides.map((ride) => (
+            <div key={ride.ride_id} className="border rounded-lg p-4">
+              <p className="font-semibold text-lg">{ride.from_location} → {ride.to_location}</p>
+              <p className="mt-1 text-sm text-gray-600">
+                {new Date(ride.date).toLocaleDateString()} at {ride.time} · Status: {ride.status}
+              </p>
+
+              {ride.is_creator ? (
+                <>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Seats: {ride.seats_approved} / {ride.seats_total} filled
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {ride.join_requests.length === 0 ? (
+                      <p className="text-sm text-gray-500">No join requests yet.</p>
+                    ) : (
+                      ride.join_requests.map((jr) => (
+                        <div key={jr.roll_no} className="flex items-center justify-between bg-gray-50 rounded p-2">
+                          <span className="text-sm">
+                            {jr.s_name} ({jr.roll_no}) — {jr.status}
+                            {jr.status === "Approved" && jr.contact_no && ` · ${jr.contact_no}`}
+                          </span>
+                          {jr.status === "Pending" && (
+                            <div className="space-x-2">
+                              <button
+                                onClick={() => handleRespondToRequest(ride.ride_id, jr.roll_no, "Approved")}
+                                className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:opacity-90"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRespondToRequest(ride.ride_id, jr.roll_no, "Rejected")}
+                                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:opacity-90"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {ride.status !== "Cancelled" && (
+                    <button
+                      onClick={() => handleCancelRide(ride.ride_id)}
+                      className="mt-3 px-3 py-1 bg-gray-600 text-white text-sm rounded hover:opacity-90"
+                    >
+                      Cancel Ride
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="mt-2 text-sm">
+                  Posted by {ride.creator_name} · Your request: <span className="font-medium">{ride.my_request?.status}</span>
+                  {ride.my_request?.status === "Approved" && ride.creator_contact && ` · Contact: ${ride.creator_contact}`}
+                </p>
+              )}
+
+              <button
+                onClick={() => toggleChat(ride.ride_id)}
+                className="mt-3 px-3 py-1 bg-[#432818] text-white text-sm rounded hover:opacity-90"
+              >
+                {openChatRideId === ride.ride_id ? "Close Chat" : "Chat"}
+              </button>
+
+              {openChatRideId === ride.ride_id && (
+                <div className="mt-3 border rounded-lg p-3 bg-gray-50">
+                  <div className="max-h-48 overflow-y-auto space-y-2 mb-3">
+                    {chatMessages.length === 0 ? (
+                      <p className="text-sm text-gray-500">No messages yet. Say hello!</p>
+                    ) : (
+                      chatMessages.map((msg) => (
+                        <div key={msg._id} className="text-sm">
+                          <span className="font-medium">{msg.sender_name}:</span> {msg.text}
+                          <span className="ml-2 text-xs text-gray-400">
+                            {new Date(msg.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 p-2 border rounded text-sm"
+                      placeholder="Type a message..."
+                      value={newMessageText}
+                      onChange={(e) => setNewMessageText(e.target.value)}
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1 bg-[#432818] text-white text-sm rounded hover:opacity-90"
+                    >
+                      Send
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {/* Browse Rides */}
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold text-gray-900">Available Rides</h2>
+
+      <div className="bg-white rounded-lg shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div>
+          <label className="block mb-1 text-sm">Date</label>
+          <input
+            type="date"
+            className="w-full p-2 border rounded"
+            value={rideFilters.date}
+            onChange={(e) => setRideFilters({ ...rideFilters, date: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block mb-1 text-sm">Place (from or to)</label>
+          <input
+            type="text"
+            className="w-full p-2 border rounded"
+            placeholder="e.g. Airport"
+            value={rideFilters.place}
+            onChange={(e) => setRideFilters({ ...rideFilters, place: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block mb-1 text-sm">Time</label>
+          <input
+            type="time"
+            className="w-full p-2 border rounded"
+            value={rideFilters.time}
+            onChange={(e) => setRideFilters({ ...rideFilters, time: e.target.value })}
+          />
+        </div>
+        <button
+          onClick={() => setRideFilters({ date: "", place: "", time: "" })}
+          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+        >
+          Clear Filters
+        </button>
+      </div>
+
+      {filteredCarpoolRides.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-lg shadow">
+          <p className="text-gray-500 text-lg">
+            {carpoolRides.length === 0 ? "No rides posted yet" : "No rides match your filters"}
+          </p>
+        </div>
+      ) : (
+        filteredCarpoolRides.map((ride) => (
+          <div key={ride.ride_id} className="bg-[#432818] text-white rounded-lg shadow p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-semibold text-lg">{ride.from_location} → {ride.to_location}</p>
+                <p className="mt-2">{new Date(ride.date).toLocaleDateString()} at {ride.time}</p>
+                <p className="mt-2">Posted by: {ride.creator_name}</p>
+                <p className="mt-2">Seats: {ride.seats_available} / {ride.seats_total} available</p>
+                <p className="mt-2 text-sm opacity-75">Status: {ride.status}</p>
+              </div>
+              {!ride.is_creator && (
+                ride.my_request ? (
+                  <span className="px-3 py-2 bg-white/20 rounded text-sm">
+                    Request {ride.my_request.status}
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => handleJoinRide(ride.ride_id)}
+                    disabled={ride.status !== "Open" || ride.seats_available <= 0}
+                    className="px-4 py-2 bg-white text-[#432818] rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Request to Join
+                  </button>
+                )
+              )}
+            </div>
           </div>
         ))
       )}
@@ -670,6 +1224,24 @@ if (activeTab === "complaints") {
                     min={new Date().toISOString().split("T")[0]}
                   />
                 </div>
+                <div>
+                  <label className="block mb-2">Prescription (image or PDF)</label>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="w-full p-2 border rounded"
+                    onChange={(e) =>
+                      setNewFoodRequest({
+                        ...newFoodRequest,
+                        prescription: e.target.files[0] || null,
+                      })
+                    }
+                    required
+                  />
+                  <p className="text-sm text-gray-600 mt-1">
+                    Required for warden to verify before approval.
+                  </p>
+                </div>
                 <button
                   type="submit"
                   className="bg-[#432818] text-white px-4 py-2 rounded hover:opacity-90 transition-opacity"
@@ -701,6 +1273,16 @@ if (activeTab === "complaints") {
                     <p className="mt-2 text-sm opacity-75">
                       Status: {request.status}
                     </p>
+                    {request.prescription_path && (
+                      <a
+                        href={request.prescription_path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block underline text-sm"
+                      >
+                        View Prescription
+                      </a>
+                    )}
                   </div>
                 ))
               )}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Image from "react-bootstrap/Image";
@@ -7,7 +7,7 @@ import GoogleAuthButton from "../GoogleAuthButton";
 
 const LoginForm = ({ userType }) => {
   const navigate = useNavigate();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     snu_email_id: "",
@@ -15,6 +15,14 @@ const LoginForm = ({ userType }) => {
     password: "",
   });
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error");
+    if (oauthError) {
+      setError(oauthError);
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

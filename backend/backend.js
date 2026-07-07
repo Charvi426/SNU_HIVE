@@ -9,13 +9,17 @@ import db from './db.js';
 import complaintRoutes from './complaints.js'; 
 import foodrequestRoutes from './foodrequest.js';
 import verifyToken from './middleware/verifyToken.js';
+import verifyWardenToken from './middleware/verifyWardenToken.js';
 import dotenv from 'dotenv';
 import lostFoundRoutes from './lostNfound.js';
+import carpoolRoutes from './carpool.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { parse } from 'csv-parse/sync';
+import { upload } from './config/cloudinary.js';
 
-import hostel from './models/Hostel.js';
+import Hostel from './models/Hostel.js';
 import Warden from './models/Warden.js';
 import SupportDept from './models/SupportDept.js';
 import Student from './models/Student.js';
@@ -36,7 +40,7 @@ app.get("/", (req, res) => {
 
 
 app.use(passport.initialize());
-const jwtSecret = "zxcvasdfgtrewqyhbvcxzfdsahfs";
+const jwtSecret = process.env.JWT_SECRET;
 
 const __filename = fileURLToPath(import.meta.url);       
 const __dirname = dirname(__filename);
@@ -95,6 +99,7 @@ app.get(
     }
     passport.authenticate("google", {
       scope: ["profile", "email"],
+      prompt: "select_account",
     })(req, res, next);
   }
 );
@@ -111,28 +116,23 @@ app.get(
       }
 
       if (!user) {
-        console.log("Google OAuth: No user found", info);
-        // Extract email and name from Google profile
-        const email = req.user?.emails?.[0]?.value?.toLowerCase() || "";
-        const name = req.user?.displayName || "";
-        const googleId = req.user?.id || "";
-        
-        // User not registered yet - redirect to profile completion page
+        console.log("Google OAuth: No matching student record", info);
         return res.redirect(
-          `${process.env.FRONTEND_URL}/oauth-success?status=new&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&googleId=${encodeURIComponent(googleId)}`
+          `${process.env.FRONTEND_URL}/login/student?error=${encodeURIComponent("This email was not found in hostel records. Please contact your warden.")}`
         );
       }
 
       // User exists - create token and redirect
+      console.log("Google OAuth: matched student", user.roll_no, user.snu_email_id);
       const token = jwt.sign(
         { roll_no: user.roll_no, role: "student" },
         jwtSecret,
         { expiresIn: "1d" }
       );
 
-      res.redirect(
-        `${process.env.FRONTEND_URL}/oauth-success?token=${token}&role=student`
-      );
+      const redirectUrl = `${process.env.FRONTEND_URL}/oauth-success?token=${token}&role=student`;
+      console.log("Google OAuth: redirecting to", redirectUrl);
+      res.redirect(redirectUrl);
     })(req, res, next);
   }
 );
@@ -141,6 +141,7 @@ app.use('/api',foodrequestRoutes);
 app.use('/', complaintRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api', lostFoundRoutes);
+app.use('/api', carpoolRoutes);
 
 // Error handling middleware for multer and other errors
 app.use((err, req, res, next) => {
@@ -218,17 +219,11 @@ app.post('/createWarden', [
 });
 
 
+// Student signup: claims a pre-registered record (uploaded by the warden via CSV)
+// by setting a password. Students never provide roll_no/dept/hostel/etc themselves.
 app.post('/createStudent', [
-    body('roll_no').notEmpty().withMessage('Roll number is required'),
-    body('s_name').notEmpty().withMessage('Name is required'),
-    body('dept').notEmpty().withMessage('Department is required'),
-    body('batch').isInt().withMessage('Batch must be a valid number'),
-    body('contact_no').notEmpty().withMessage('Contact number is required'),
     body('snu_email_id').isEmail().withMessage('Invalid email format'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-    body('room_no').notEmpty().withMessage('Room number is required'),
-    body('hostel_id').notEmpty().withMessage('Hostel ID is required'),
-    body('parent_contact').notEmpty().withMessage('Parent contact is required')
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -236,47 +231,31 @@ app.post('/createStudent', [
     }
 
     try {
-        const { roll_no, s_name, dept, batch, contact_no, snu_email_id, password, room_no, hostel_id, parent_contact } = req.body;
+        const snu_email_id = req.body.snu_email_id.trim().toLowerCase();
+        const { password } = req.body;
 
-        // Check hostel existence and capacity
-        const hostel = await Hostel.findOne({ hostel_id });
-        if (!hostel) {
-            return res.status(400).json({ message: 'This hostel does not exist' });
-        }
-        const current_occupancy = await Student.countDocuments({ hostel_id });
-        if (current_occupancy >= hostel.capacity) {
-            return res.status(400).json({ message: 'This hostel is full' });
+        const student = await Student.findOne({ snu_email_id });
+        if (!student) {
+            return res.status(404).json({
+                message: 'This email was not found in hostel records. Please contact your warden.'
+            });
         }
 
-        // Check for existing email
-        const existingEmail = await Student.findOne({ snu_email_id });
-        if (existingEmail) {
-            return res.status(400).json({ message: 'This email is already registered' });
+        if (student.isRegistered) {
+            return res.status(400).json({ message: 'This email is already registered. Please log in instead.' });
         }
 
         const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        const student = new Student({
-            roll_no,
-            s_name,
-            dept,
-            batch,
-            contact_no,
-            snu_email_id,
-            password: hashedPassword,
-            room_no,
-            hostel_id,
-            parent_contact
-        });
-
+        student.password = await bcrypt.hash(password, salt);
+        student.isRegistered = true;
         await student.save();
+
         res.status(200).json({
-        success: true,
-        message: 'Student created successfully'
+            success: true,
+            message: 'Student account activated successfully'
         });
     } catch (error) {
-        console.error("Error inserting student:", error.message, error.stack);
+        console.error("Error activating student:", error.message, error.stack);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
@@ -328,6 +307,92 @@ app.post('/createHostel', [
         console.log("Error creating the hostel:", error);
         res.status(500).json({ message: 'Failed to create a hostel', error: error.message });
     }
+});
+
+// Bulk create/update student records from a warden-provided CSV.
+// Students never submit roll_no/dept/hostel/etc themselves - only /createStudent (setting a password) does.
+app.post('/api/warden/students/upload', verifyWardenToken, upload.single('csvFile'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: 'CSV file is required (field name: csvFile)' });
+    }
+
+    let rows;
+    try {
+        rows = parse(req.file.buffer.toString('utf-8'), {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true
+        });
+    } catch (err) {
+        return res.status(400).json({ message: 'Could not parse CSV file', error: err.message });
+    }
+
+    const requiredColumns = ['roll_no', 's_name', 'snu_email_id', 'dept', 'batch', 'contact_no', 'parent_contact', 'room_no', 'hostel_id'];
+    const results = { created: 0, updated: 0, failed: [] };
+
+    for (const [index, row] of rows.entries()) {
+        const rowNum = index + 2; // +1 for header row, +1 for 1-indexing
+        const missing = requiredColumns.filter(col => !row[col]);
+        if (missing.length > 0) {
+            results.failed.push({ row: rowNum, error: `Missing: ${missing.join(', ')}` });
+            continue;
+        }
+
+        try {
+            const roll_no = row.roll_no.trim();
+            const snu_email_id = row.snu_email_id.trim().toLowerCase();
+            const contact_no = row.contact_no.trim();
+            const batch = parseInt(row.batch, 10);
+            const hostel_id = row.hostel_id.trim();
+
+            if (isNaN(batch)) {
+                results.failed.push({ row: rowNum, error: 'batch must be a number' });
+                continue;
+            }
+
+            const hostel = await Hostel.findOne({ hostel_id });
+            if (!hostel) {
+                results.failed.push({ row: rowNum, error: `Hostel '${hostel_id}' does not exist` });
+                continue;
+            }
+
+            const emailConflict = await Student.findOne({ snu_email_id, roll_no: { $ne: roll_no } });
+            if (emailConflict) {
+                results.failed.push({ row: rowNum, error: `Email already used by a different student (${emailConflict.roll_no})` });
+                continue;
+            }
+
+            const contactConflict = await Student.findOne({ contact_no, roll_no: { $ne: roll_no } });
+            if (contactConflict) {
+                results.failed.push({ row: rowNum, error: `Contact number already used by a different student (${contactConflict.roll_no})` });
+                continue;
+            }
+
+            const update = {
+                s_name: row.s_name.trim(),
+                dept: row.dept.trim(),
+                batch,
+                contact_no,
+                snu_email_id,
+                room_no: row.room_no.trim(),
+                hostel_id,
+                parent_contact: row.parent_contact.trim()
+            };
+
+            const existing = await Student.findOne({ roll_no });
+            if (existing) {
+                await Student.updateOne({ roll_no }, { $set: update });
+                results.updated++;
+            } else {
+                await Student.create({ roll_no, ...update, isRegistered: false });
+                results.created++;
+            }
+        } catch (err) {
+            results.failed.push({ row: rowNum, error: err.message });
+        }
+    }
+
+    res.status(200).json({ success: true, ...results });
 });
 
 app.post('/createSupportAdmin', [
@@ -406,16 +471,13 @@ app.post('/loginStudent', async (req, res) => {
     }
 
     try {
-        console.log('Login attempt:', { snu_email_id, password });
         const student = await Student.findOne({ snu_email_id });
-        console.log('Student found:', student);
 
-        if (!student) {
+        if (!student || !student.password) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         const pwdCompare = await bcrypt.compare(password, student.password);
-        console.log('Password match:', pwdCompare);
 
         if (!pwdCompare) {
             return res.status(401).json({ message: 'Invalid credentials' });
@@ -471,96 +533,6 @@ app.post('/loginSupportAdmin', async (req, res) => {
         console.error("Support login error:", err);
         res.status(500).json({ message: "Internal server error" });
     }
-});
-
-// Student Profile (with hostel name)
-import Hostel from './models/Hostel.js';
-
-// Complete Google signup - create student with remaining fields
-app.post('/auth/google/complete-signup', async (req, res) => {
-  try {
-    const { 
-      email, 
-      name, 
-      googleId,
-      roll_no,
-      dept,
-      batch,
-      contact_no,
-      room_no,
-      hostel_id,
-      parent_contact
-    } = req.body;
-
-    // Validate required fields
-    if (!email || !roll_no || !dept || !batch || !contact_no || !room_no || !hostel_id || !parent_contact) {
-      return res.status(400).json({ 
-        message: 'All fields are required' 
-      });
-    }
-
-    // Check if email already exists
-    const existingEmail = await Student.findOne({ snu_email_id: email });
-    if (existingEmail) {
-      return res.status(400).json({ 
-        message: 'This email is already registered' 
-      });
-    }
-
-    // Check hostel existence and capacity
-    const hostel = await Hostel.findOne({ hostel_id });
-    if (!hostel) {
-      return res.status(400).json({ 
-        message: 'This hostel does not exist' 
-      });
-    }
-
-    const current_occupancy = await Student.countDocuments({ hostel_id });
-    if (current_occupancy >= hostel.capacity) {
-      return res.status(400).json({ 
-        message: 'This hostel is full' 
-      });
-    }
-
-    // Create student with Google auth
-    const student = new Student({
-      roll_no,
-      s_name: name,
-      dept,
-      batch: parseInt(batch),
-      contact_no,
-      snu_email_id: email.toLowerCase(),
-      password: 'GOOGLE_AUTH_NO_PASSWORD', // Placeholder - not used for Google auth
-      room_no,
-      hostel_id,
-      parent_contact,
-      googleId,
-      authProvider: 'google'
-    });
-
-    await student.save();
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { roll_no: student.roll_no, role: "student" },
-      jwtSecret,
-      { expiresIn: "1d" }
-    );
-
-    res.json({
-      success: true,
-      message: 'Account created successfully',
-      token,
-      role: 'student'
-    });
-
-  } catch (error) {
-    console.error('Google signup completion error:', error);
-    res.status(500).json({ 
-      message: 'Server error', 
-      error: error.message 
-    });
-  }
 });
 
 app.get('/api/student/profile', verifyToken, async (req, res) => {

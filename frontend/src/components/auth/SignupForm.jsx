@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import StudentFields from './StudentFields';
 import SupportFields from './SupportFields';
 import WardenFields from './WardenFields';
 import GoogleAuthButton from "../GoogleAuthButton";
@@ -22,17 +21,6 @@ const SignupForm = ({ userType }) => {
   const initialFormData = {
     email: '',
     password: '',
-    ...(userType === 'student' && {
-      roll_no: '',
-      s_name: '',
-      dept: '',
-      batch: '',
-      contact_no: '',
-      room_no: '',
-      hostel_id: '',
-      parent_contact: '',
-      snu_email_id: ''
-    }),
     ...(userType === 'warden' && {
       warden_id: '',
       w_name: '',
@@ -54,19 +42,8 @@ const SignupForm = ({ userType }) => {
 
     switch (userType) {
       case 'student':
-        if (!formData.roll_no || !formData.s_name || !formData.snu_email_id ||
-            !formData.dept || !formData.batch || !formData.contact_no ||
-            !formData.room_no || !formData.hostel_id || !formData.parent_contact) {
-          throw new Error('All student fields are required');
-        }
-        if (!/^\d{10}$/.test(formData.contact_no)) {
-          throw new Error('Contact number must be 10 digits');
-        }
-        if (!/^\d{10}$/.test(formData.parent_contact)) {
-          throw new Error('Parent contact must be 10 digits');
-        }
-        if (!/^[a-zA-Z0-9._%+-]+@snu\.edu\.in$/.test(formData.snu_email_id)) {
-          throw new Error('Please enter a valid SNU email address');
+        if (!formData.email) {
+          throw new Error('Email is required');
         }
         break;
 
@@ -123,16 +100,8 @@ const SignupForm = ({ userType }) => {
       switch (userType) {
         case 'student':
           requestData = {
-            roll_no: formData.roll_no.trim(),
-            s_name: formData.s_name.trim(),
-            dept: formData.dept,
-            batch: parseInt(formData.batch),
-            contact_no: formData.contact_no,
-            snu_email_id: formData.snu_email_id.trim().toLowerCase(),
-            password: formData.password,
-            room_no: formData.room_no.toUpperCase(),
-            hostel_id: formData.hostel_id,
-            parent_contact: formData.parent_contact
+            snu_email_id: formData.email.trim().toLowerCase(),
+            password: formData.password
           };
           break;
 
@@ -179,10 +148,10 @@ const SignupForm = ({ userType }) => {
 
       if (response.data.success) {
         const loginData = {
-          ...(userType === 'student' ? { 
-            snu_email_id: formData.snu_email_id 
-          } : { 
-            email: formData.email 
+          ...(userType === 'student' ? {
+            snu_email_id: formData.email
+          } : {
+            email: formData.email
           }),
           password: formData.password
         };
@@ -228,7 +197,7 @@ const SignupForm = ({ userType }) => {
   const renderFields = () => {
     switch (userType) {
       case 'student':
-        return <StudentFields formData={formData} setFormData={setFormData} />;
+        return null;
       case 'warden':
         return <WardenFields formData={formData} setFormData={setFormData} />;
       case 'support':

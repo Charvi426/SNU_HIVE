@@ -9,6 +9,11 @@ const WardenDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [updateInProgress, setUpdateInProgress] = useState(false);
 
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvError, setCsvError] = useState('');
+  const [csvResult, setCsvResult] = useState(null);
+
   const statusColors = {
     'Pending': 'bg-yellow-100 text-yellow-800',
     'Approved': 'bg-green-100 text-green-800',
@@ -96,6 +101,40 @@ const API_URL = import.meta.env.VITE_API_URL;
     fetchFoodRequests();
   }, [navigate]);
 
+  const handleCsvUpload = async (e) => {
+    e.preventDefault();
+    if (!csvFile) {
+      setCsvError('Please choose a CSV file first');
+      return;
+    }
+
+    setCsvUploading(true);
+    setCsvError('');
+    setCsvResult(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('csvFile', csvFile);
+
+      const response = await axios.post(`${API_URL}/api/warden/students/upload`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setCsvResult(response.data);
+      setCsvFile(null);
+      e.target.reset();
+    } catch (err) {
+      console.error('Error uploading student CSV:', err);
+      setCsvError(err.response?.data?.message || 'Failed to upload CSV');
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -124,6 +163,51 @@ const API_URL = import.meta.env.VITE_API_URL;
           </div>
         )}
 
+        <div className="mb-8 bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Upload Student Records</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Upload a CSV with columns: roll_no, s_name, snu_email_id, dept, batch, contact_no, parent_contact, room_no, hostel_id.
+            Existing students (matched by roll_no) are updated in place; new rows create new records. Students then set their own password by signing up with their snu_email_id.
+          </p>
+
+          <form onSubmit={handleCsvUpload} className="flex flex-col sm:flex-row gap-4 sm:items-center">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => setCsvFile(e.target.files[0] || null)}
+              className="block text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-[#432818] file:text-white hover:file:bg-[#5C3A2E]"
+            />
+            <button
+              type="submit"
+              disabled={csvUploading}
+              className={`px-4 py-2 rounded text-white transition-colors ${
+                csvUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#432818] hover:bg-[#5C3A2E]'
+              }`}
+            >
+              {csvUploading ? 'Uploading...' : 'Upload CSV'}
+            </button>
+          </form>
+
+          {csvError && (
+            <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              {csvError}
+            </div>
+          )}
+
+          {csvResult && (
+            <div className="mt-4 bg-green-50 border border-green-400 text-green-800 px-4 py-3 rounded">
+              <p>Created: {csvResult.created}, Updated: {csvResult.updated}, Failed: {csvResult.failed.length}</p>
+              {csvResult.failed.length > 0 && (
+                <ul className="mt-2 list-disc list-inside text-sm text-red-700">
+                  {csvResult.failed.map((f, i) => (
+                    <li key={i}>Row {f.row}: {f.error}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
         {foodRequests.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
             <p className="text-gray-500 text-lg">No food requests found</p>
@@ -143,8 +227,18 @@ const API_URL = import.meta.env.VITE_API_URL;
                     </div>
                     <p>Type: {request.type}</p>
                     <p>Date: {new Date(request.date).toLocaleDateString()}</p>
+                    {request.prescription_path && (
+                      <a
+                        href={request.prescription_path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block underline text-sm text-white"
+                      >
+                        View Prescription
+                      </a>
+                    )}
                     </div>
-                  
+
                   <div className="flex flex-col items-end space-y-3">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[request.status]}`}>
                       {statusMapping[request.status] || request.status}

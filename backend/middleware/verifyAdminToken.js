@@ -1,7 +1,5 @@
 import jwt from 'jsonwebtoken';
 
-const secretKey = "zxcvasdfgtrewqyhbvcxzfdsahfs"; 
-
 const verifyAdminToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -12,7 +10,7 @@ const verifyAdminToken = (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, secretKey);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     if (!decoded.d_name) {
       return res.status(403).json({ message: 'Not authorized as admin' });

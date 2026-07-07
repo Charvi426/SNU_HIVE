@@ -21,16 +21,17 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
-          const email = profile.emails?.[0]?.value?.toLowerCase();
+          const email = profile.emails?.[0]?.value?.toLowerCase() || "";
+          console.log("Google OAuth: checking email", email);
 
-          if (!email || !email.endsWith("@snu.edu.in")) {
-            return done(null, false, { message: "SNU email required" });
+          if (!email) {
+            return done(null, false, { message: "Google account has no email" });
           }
 
           const user = await Student.findOne({ snu_email_id: email });
 
           if (!user) {
-            return done(null, false, { message: "User not found. Complete signup." });
+            return done(null, false, { message: "No student record found for this email" });
           }
 
           return done(null, user);

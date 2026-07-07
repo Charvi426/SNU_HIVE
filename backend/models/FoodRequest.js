@@ -7,7 +7,8 @@ const FoodRequestSchema = new mongoose.Schema({
   type: { type: String, required: true },
   date: { type: Date, required: true },
   status: { type: String, required: true, default: 'Pending' },
-  remarks: { type: String }
+  remarks: { type: String },
+  prescription_path: { type: String, required: true }
 });
 
 export default mongoose.model('FoodRequest', FoodRequestSchema);
